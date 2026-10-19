@@ -53,7 +53,7 @@ function activityCount(day: Profile["activity"][number] | undefined) {
 
 function loggedDate(value: string) {
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "Date unavailable" : date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  return Number.isNaN(date.getTime()) ? "Date unavailable" : date.toLocaleDateString("en-GB", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 }
 
 function activityDates(year: boolean) {
@@ -119,7 +119,7 @@ export default function ProfileView({ profile, articles, sources, onChange, onOp
   });
   const visibleCompanies = showAllCompanies ? orderedSources : orderedSources.slice(0, 10);
   const companyLogos = new Set(["stripe", "netflix", "cloudflare", "discord", "github", "spotify", "shopify", "airbnb", "uber"]);
-  const selectedLabel = new Date(`${selectedDate}T12:00:00Z`).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
+  const selectedLabel = new Date(`${selectedDate}T12:00:00Z`).toLocaleDateString("en-GB", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
 
   return <section className="profile-view" aria-labelledby={`${id}-title`}>
     <header className="profile-heading">
@@ -172,7 +172,7 @@ export default function ProfileView({ profile, articles, sources, onChange, onOp
             const day = activity.get(key);
             const count = activityCount(day);
             const level = !count ? 0 : count < 3 ? 1 : count < 6 ? 2 : 3;
-            const label = `${date.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" })} UTC: ${day?.reads || 0} reads logged, ${day?.opens || 0} articles opened, ${day?.saves || 0} saved`;
+            const label = `${date.toLocaleDateString("en-GB", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" })} UTC: ${day?.reads || 0} reads logged, ${day?.opens || 0} articles opened, ${day?.saves || 0} saved`;
             return <button key={key} type="button" className={`activity-dot activity-level-${level}${future ? " activity-future" : ""}${selectedDate === key ? " activity-selected" : ""}`} disabled={future} title={label} aria-label={label} aria-pressed={selectedDate === key} onFocus={() => setSelectedDate(key)} onMouseEnter={() => setSelectedDate(key)} onClick={() => setSelectedDate(key)} />;
           })}
         </div>
