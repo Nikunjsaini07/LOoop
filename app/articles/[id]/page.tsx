@@ -9,7 +9,7 @@ type Props = { params: Promise<{ id: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const article = await loadArticle(id);
-  return { title: article ? `${article.title} — Longreads` : "Article not found — Longreads", description: article?.summary || "An engineering story, a short abstract, and your personal reading log." };
+  return { title: article ? `${article.title} — readzz` : "Article not found — readzz", description: article?.summary || "An engineering story, a short abstract, and your personal reading log." };
 }
 
 export default async function ArticlePage({ params }: Props) {

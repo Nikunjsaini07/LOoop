@@ -221,7 +221,7 @@ export default function BlogReader({ initial, initialView = "home" }: { initial:
   return <div className={`publication view-${view}`}>
     <a className="skip-link" href="#reading-surface">Skip to your reading</a>
     <header className="site-header">
-      <a className="wordmark" href="/" onClick={(event) => { event.preventDefault(); navigate("home"); }}><span className="brand-mark" aria-hidden="true">⁄</span>Longreads</a>
+      <a className="wordmark" href="/" onClick={(event) => { event.preventDefault(); navigate("home"); }}><span className="brand-mark" aria-hidden="true">⁄</span>readzz</a>
       <nav className="main-nav" aria-label="Main navigation">{([{ id: "home", label: "Feed", href: "/" }, { id: "trending", label: "Trending", href: "/trending" }, { id: "profile", label: "Profile", href: "/profile" }] as const).map(({ id, label, href }) => <a key={id} href={href} className={`nav-item${view === id ? " is-active" : ""}`} aria-current={view === id ? "page" : undefined} onClick={(event) => { if (event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return; event.preventDefault(); navigate(id); }}>{label}</a>)}</nav>
     </header>
     <main className="reading-main" id="reading-surface">

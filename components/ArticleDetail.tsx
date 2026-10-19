@@ -22,7 +22,7 @@ export default function ArticleDetail({ article }: { article: Article }) {
   return <div className="publication view-article">
     <a className="skip-link" href="#article-detail">Skip to article</a>
     <header className="site-header">
-      <a className="wordmark" href="/"><span className="brand-mark" aria-hidden="true">⁄</span>Longreads</a>
+      <a className="wordmark" href="/"><span className="brand-mark" aria-hidden="true">⁄</span>readzz</a>
       <nav className="main-nav" aria-label="Main navigation"><a className="nav-item is-active" href="/">Feed</a><a className="nav-item" href="/trending">Trending</a><a className="nav-item" href="/profile">Profile</a></nav>
     </header>
     <main className="reading-main detail-main" id="article-detail">

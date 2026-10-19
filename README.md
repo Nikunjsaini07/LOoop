@@ -1,6 +1,6 @@
-# Daily engineering reading
+# readzz
 
-A daily engineering reading app that recreates the supplied Longreads reference: a fading sky photograph, a 680px centered layout, layered neutral cards, Cal Sans headings, Instrument Serif italics, and Geist text. Fonts and reference imagery are served locally; origins and font licenses are recorded in `public/reference/ASSET_PROVENANCE.md`. Feed, Trending and Profile have direct routes and responsive layouts.
+A daily engineering reading app based on the supplied Longreads reference: a fading sky photograph, a 760px centered layout, layered neutral cards, Cal Sans headings, Instrument Serif italics, and Geist text. Fonts and reference imagery are served locally; origins and font licenses are recorded in `public/reference/ASSET_PROVENANCE.md`. Feed, Trending and Profile have direct routes and responsive layouts.
 
 Articles show a publisher title, a short excerpt and a link to the original. This app does not republish full articles or pretend that opening an external link proves it was read.
 

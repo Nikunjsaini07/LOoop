@@ -4,7 +4,7 @@ import "./library.css";
 import "./article.css";
 
 export const metadata: Metadata = {
-  title: "Longreads — Engineering, without the noise",
+  title: "readzz — Engineering, without the noise",
   description: "Engineering stories from the companies building what comes next. Follow companies, shape your own feed, and save something worth reading.",
   icons: {
     icon: "/favicon.svg",
