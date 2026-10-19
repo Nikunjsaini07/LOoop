@@ -35,7 +35,7 @@ export default function ArticleDetail({ article }: { article: Article }) {
         </header>
         <section className="abstract-tray tray" aria-labelledby="abstract-heading">
           <div className="abstract-sheet sheet"><h2 className="eyebrow" id="abstract-heading">The short version</h2><p className={abstract ? "detail-abstract" : "detail-abstract detail-no-abstract"}>{abstract || "The publisher hasn’t provided an abstract for this article. Follow the link below to read the original story."}</p></div>
-          <div className="abstract-source"><span>From {publisher}</span><span>Publisher excerpt</span></div>
+          <div className="abstract-source"><span>From {publisher}</span>{abstract && <span>Publisher excerpt</span>}</div>
         </section>
         <a className="detail-publisher-link" href={article.url} target="_blank" rel="noopener noreferrer" onClick={() => recordOpen(article)}><span><strong>Read the original article</strong><small>{publisher}</small></span><ArrowUpRight size={20} strokeWidth={1.5} /></a>
         <section className="detail-log tray" aria-labelledby="reading-log-heading">
