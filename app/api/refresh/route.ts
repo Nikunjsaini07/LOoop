@@ -1,0 +1,21 @@
+import { getChatGPTUser } from "@/app/chatgpt-auth";
+import { refreshStaleSources } from "@/lib/server/refresh";
+import { database, isSameOrigin, jsonError } from "@/lib/server/store";
+
+export const dynamic = "force-dynamic";
+
+export async function GET() {
+  try {
+    const states = await database().prepare("SELECT source_id,last_attempt,last_success,error FROM source_refresh ORDER BY source_id").all();
+    return Response.json({ states: states.results, mode: "traffic-driven", intervalHours: 6, scheduled: false }, { headers: { "Cache-Control": "no-store" } });
+  } catch { return Response.json({ states: [], mode: "seed", intervalHours: 6, scheduled: false }); }
+}
+
+export async function POST(request: Request) {
+  if (!isSameOrigin(request)) return jsonError("This request must come from Scroll", 403);
+  const user = await getChatGPTUser();
+  if (!user) return jsonError("Sign in before requesting a source refresh", 401);
+  try {
+    return Response.json(await refreshStaleSources(), { headers: { "Cache-Control": "no-store" } });
+  } catch { return jsonError("Live source storage is temporarily unavailable. The collected archive is still available.", 503); }
+}
