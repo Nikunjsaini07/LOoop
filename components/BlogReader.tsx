@@ -219,7 +219,6 @@ export default function BlogReader({ initial, initialView = "home" }: { initial:
   const renderStory = (article: Article, index?: number) => <StoryCard key={article.id} article={article} rank={index} ready={ready} saved={profile.bookmarks.includes(article.id)} onSave={() => toggleBookmark(article)} onTopic={(value) => { setTopic(value); setSearchOpen(true); if (view !== "home") navigate("home"); }} />;
 
   return <div className={`publication view-${view}`}>
-    {view === "home" && <Image className="sky-fade" src="/reference/sky.jpg" alt="" width={1920} height={1280} priority unoptimized />}
     <a className="skip-link" href="#reading-surface">Skip to your reading</a>
     <header className="site-header">
       <a className="wordmark" href="/" onClick={(event) => { event.preventDefault(); navigate("home"); }}><span className="brand-mark" aria-hidden="true">⁄</span>Longreads</a>

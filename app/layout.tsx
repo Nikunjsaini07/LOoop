@@ -19,7 +19,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        {/* One decorative asset across routes, with no additional client component. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="site-sky" src="/reference/sky.jpg" alt="" aria-hidden="true" width={1920} height={1280} fetchPriority="high" decoding="async" />
+        {children}
+      </body>
     </html>
   );
 }
