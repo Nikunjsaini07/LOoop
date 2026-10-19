@@ -60,7 +60,16 @@ function subprocess(executable, args, options = {}) {
 }
 
 function parseJson(output) {
-  try { return JSON.parse(output); } catch { throw new Error('Wrangler did not return valid JSON. Check authentication and retry; no credentials are printed by this helper.'); }
+  try { return JSON.parse(output); } catch { throw new Error('A subprocess did not return valid JSON. Inspect the remote database before retrying because a completed operation may already have changed it.'); }
+}
+
+export function parseWranglerJson(output) {
+  // Wrangler's file-import spinner writes progress to stdout even with --json.
+  // Accept only a complete trailing JSON document, never a partial result.
+  for (const match of output.matchAll(/^[\[{]/gm)) {
+    try { return JSON.parse(output.slice(match.index)); } catch { /* Try the next document start. */ }
+  }
+  throw new Error('Wrangler did not return a complete JSON result. Inspect the remote database before retrying because the operation may have completed.');
 }
 
 function rows(response) {
@@ -94,7 +103,7 @@ async function main() {
   if (!database?.name) throw new Error('Configured D1 database ID was not found in the configured Cloudflare account. No database was created or changed.');
   writeFileSync(configPath, JSON.stringify({ ...baseConfig, d1_databases: [{ binding: 'DB', database_name: database.name, database_id: database.uuid, migrations_dir: join(ROOT, 'drizzle') }] }, null, 2) + '\n');
   const execute = sql => rows(parseJson(wrangler('d1', 'execute', 'DB', '--remote', '--json', '--command', sql)));
-  const executeFile = path => rows(parseJson(wrangler('d1', 'execute', 'DB', '--remote', '--yes', '--json', '--file', path)));
+  const executeFile = path => rows(parseWranglerJson(wrangler('d1', 'execute', 'DB', '--remote', '--yes', '--json', '--file', path)));
   const stamp = new Date().toISOString().replace(/[:.]/g, '-') + '-' + process.pid;
   const schemaPath = join(output, `${stamp}-schema.sql`);
   wrangler('d1', 'export', 'DB', '--remote', '--skip-confirmation', '--output', schemaPath, '--no-data');

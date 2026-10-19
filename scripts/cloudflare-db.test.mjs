@@ -1,6 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { validateIds, validateSchema, verifyArticles } from './cloudflare-db.mjs';
+import { parseWranglerJson, validateIds, validateSchema, verifyArticles } from './cloudflare-db.mjs';
+
+test('parses complete file-import JSON after Wrangler progress output', () => {
+  const result = [{ success: true, results: [{ 'Rows written': 1260 }] }];
+  const json = JSON.stringify(result, null, 2);
+  assert.deepEqual(parseWranglerJson(json), result);
+  assert.deepEqual(parseWranglerJson(`├ Checking if file needs uploading\n│ Uploading complete.\n${json}\n`), result);
+  assert.throws(() => parseWranglerJson('Uploading complete.\n[{"success":true'), /complete JSON/);
+  assert.throws(() => parseWranglerJson(`${json}\nUnexpected trailing output`), /complete JSON/);
+});
 
 test('rejects malformed IDs and partially migrated schema before writing', () => {
   assert.throws(() => validateIds({ CLOUDFLARE_ACCOUNT_ID: 'example' }), /32-character/);
