@@ -28,6 +28,31 @@ python scripts/import-collector.py --verify
 
 This copies a read-only snapshot into local D1, preserving profiles and existing article IDs. It is not a continuous connection to the collector's SQLite file.
 
+## Connect the existing Cloudflare D1 database
+
+Store `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_D1_DATABASE_ID` in the ignored `.env.local` file. Authenticate Wrangler using its normal login flow or an appropriately scoped environment token; never commit credentials. The helper uses this project's installed Wrangler and always passes `--env-file .env.local`.
+
+```powershell
+# Read-only remote inspection; this is also the default with no arguments.
+node scripts/cloudflare-db.mjs --inspect
+
+# Explicitly import the public collector archive into the configured remote DB.
+node scripts/cloudflare-db.mjs --import
+
+# Compare every collector article against remote D1 without changing it.
+node scripts/cloudflare-db.mjs --verify
+```
+
+The helper resolves the database's real name from `d1 list` within the configured account and saves a separate binding config under ignored `outputs/cloudflare-d1/`. It never changes the local preview binding, creates/deletes a database, or changes `.openai/hosting.json`. Uploading the database does not deploy the website or connect the running local preview to the remote database.
+
+Before import it exports the remote schema and rejects partial/incompatible app tables or unreviewed app triggers. A database with no app tables receives the committed initial migration; existing compatible tables are retained. If any user tables already exist, a full pre-import SQL backup is saved under `outputs/cloudflare-d1/`. Cloudflare notes that remote exports can briefly make the database unavailable to queries, so schedule repeat imports appropriately once the app is live. Keep these ignored backups private because an existing database can contain user profiles.
+
+Only public articles and source health are uploaded. The article upserts retain existing IDs, earliest discovery timestamps, extra remote articles, and newer source refresh status. Every source URL/company/discovery timestamp is checked, existing IDs are checked, and profile counts must remain unchanged. A public verification manifest is generated from the same collector read transaction as the SQL snapshot. Rerunning an import is idempotent. The helper reports the actual verified count instead of assuming the archive will always contain 1,260 articles.
+
+These commands administer D1 only. They do not create a daily ingestion schedule, enable authentication, publish the app, or replace its production Worker binding. Review pending schema migrations explicitly as the app evolves; this helper deliberately refuses to guess how to repair an incompatible remote schema.
+
+References: [D1 import/export](https://developers.cloudflare.com/d1/best-practices/import-export-data/), [Wrangler D1 commands](https://developers.cloudflare.com/d1/wrangler-commands/).
+
 ## Authentication recommendation
 
 Recommended for a standalone public reading product: **Clerk**, initially Google and GitHub sign-in, with email as an optional fallback. Keep the site's own typography and page layout around the auth flow. Clerk is the identity provider; app profiles, read logs and bookmarks remain in the application database, linked by verified Clerk user ID.

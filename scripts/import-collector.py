@@ -166,11 +166,15 @@ def main():
     output.mkdir(parents=True, exist_ok=True)
     sql_path = output / "snapshot.sql"
     sql_path.write_text(sql, encoding="utf-8")
+    # Public verification metadata comes from the same read transaction as the SQL.
+    manifest_path = output / "manifest.json"
+    manifest_path.write_text(json.dumps([{key: article[key] for key in ("id", "company_id", "url", "discovered_at")}
+                                         for article in articles], ensure_ascii=False) + "\n", encoding="utf-8")
     report = {"source": str(source), "sourceArticles": len(articles),
               "sourceCompaniesWithArticles": len({item["company_id"] for item in articles}),
               "configuredSources": len(companies), "sourceStatuses": len(statuses),
               "sourceLatestSuccess": max((timestamp(item["succeeded_at"]) for item in statuses if item["succeeded_at"]), default=None),
-              "sqlFile": str(sql_path), "localOnly": True, "continuousLink": False}
+              "sqlFile": str(sql_path), "manifestFile": str(manifest_path), "localOnly": True, "continuousLink": False}
     if not args.export_only:
         if not config.is_file():
             raise RuntimeError("Run npm run build first to emit the local Worker configuration")
