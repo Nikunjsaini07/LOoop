@@ -15,7 +15,7 @@ The pipeline fetches publisher feeds/listings, normalizes URLs and text, assigns
 
 ## Data integrity and limits
 
-`lib/server/ingestion.ts` is shared by the scheduled Worker and the app's existing refresh wrapper. `lib/server/article-writer.ts` performs bulk SQL upserts: ten articles per SQL statement, at most 90 bound parameters, and ten statements for a full 100-item feed. An unchanged row is not rewritten. Existing article IDs, earlier discovery dates and nonempty excerpts survive subsequent refreshes.
+`lib/server/ingestion.ts` is shared by the scheduled Worker and the app's existing refresh wrapper. Companies, source adapters, topics and keyword aliases are read from SQL; article-topic relationships are maintained by transactional triggers. `lib/server/article-writer.ts` performs bulk SQL upserts: ten articles per SQL statement, at most 90 bound parameters, and ten statements for a full 100-item feed. An unchanged row is not rewritten. Existing article IDs, earlier discovery dates and nonempty excerpts survive subsequent refreshes.
 
 Fetches use fixed source URLs, HTTPS redirect validation, a 7.5-second deadline and a 3 MiB body cap. Feeds ingest at most 100 entries; listings ingest at most 30 matching links. ETag and Last-Modified conditionals reduce repeat downloads. Publisher failures retain the archive and record their error in `source_refresh`.
 
@@ -44,7 +44,7 @@ node scripts/ingestion.mjs --smoke-server
 Invoke-WebRequest http://127.0.0.1:8788/__scheduled
 ```
 
-Deployment does not create a database, apply migrations, change the account's billing plan, publish the website, or change the website's local preview binding. The production website must use the same `reads` D1 binding to display these updates. Localhost continues to use its separate local D1 archive; the application's `/api/refresh` mode describes that application's own traffic-driven refresh, not the separately deployed scheduler.
+Deployment does not create a database, apply migrations, change the account's billing plan, publish the website, or change the website's local preview binding. The production website must use the same `reads` D1 binding to display these updates. Localhost continues to use its separate local D1 archive. `/api/refresh` reports scheduled updates only when its database has received the ingestion heartbeat within thirty minutes; otherwise it reports traffic-driven refresh.
 
 For a different account/database, verify the target and change the helper's database name as needed before deploying. Do not reuse production profile data for development tests. For a larger source roster, use per-source queue jobs; the current bounded scheduler avoids introducing another service for 36 automatic sources.
 
@@ -60,3 +60,5 @@ The ingestion tests execute the production writer and scheduling logic against S
 On 20 October 2026, the real scheduled handler was exercised against remote D1: Netflix, Cloudflare, Meta and ClickHouse all refreshed successfully; the archive grew from 1,260 to 1,267 articles. Cloudflare then confirmed deployment of version `58b9fa9d-13a1-426e-8ab9-45f0a6d2f754` and its five-minute trigger. Subsequent runs change these counts; use the status command for current state.
 
 References: [Cloudflare Cron Triggers](https://developers.cloudflare.com/workers/configuration/cron-triggers/), [D1 Worker API](https://developers.cloudflare.com/d1/worker-api/).
+
+The SQL domain migration and recommendation engine are documented in [RECOMMENDATIONS.md](RECOMMENDATIONS.md). The scheduled Worker also cleans expired ranked editions and records a heartbeat in `app_state`.

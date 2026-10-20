@@ -4,10 +4,14 @@ A daily engineering reading app based on the supplied Longreads reference: a fad
 
 Articles show a publisher title, a short excerpt and a link to the original. This app does not republish full articles or pretend that opening an external link proves it was read.
 
+## Data and recommendations
+
+Companies, sources and topics are SQL entities. The server ranks the full matching archive using interests, follows, bookmarks, logged reads and activity cadence. Trending uses deduplicated signed-in read reports and saves, with an explicit fresh-discovery state until community data exists. See [RECOMMENDATIONS.md](RECOMMENDATIONS.md) for schema, privacy, pagination and migration details.
+
 ## What works
 
 - Home: personalized ordering, latest posts, followed companies and saved custom feeds.
-- Trending: freshness/topic discovery with company diversity. This is not a global popularity ranking; the app does not invent readership or engagement statistics.
+- Trending: recent unique reader logs and saves, with fresh discovery when there is no community activity.
 - Custom feeds: company/topic rules plus hard keyword exclusions, with editing and preview.
 - Search and company/topic filters, stable snapshot pagination and progressive article loading.
 - Article pages: every feed/library title opens `/articles/[id]` inside the app, with the publisher's short excerpt, original link, bookmark action and explicit read-log control. Missing excerpts have an honest fallback; full articles stay with their publishers.
@@ -80,7 +84,7 @@ python -m unittest discover -s scripts -p test_import_collector.py
 
 Public reading works from the bundled real archive even before a new D1 database is populated. With migrated D1 available, article requests start bounded background refreshes without holding up the article response. Four due sources run per eligible batch, with a global one-minute cooldown and a six-hour interval per source. Fixed RSS/Atom endpoints and approved listing adapters are used; listing adapters check robots.txt. LinkedIn remains a manual source. Network/parser failures keep previously collected articles available.
 
-**Refresh is traffic driven. An unattended daily scheduler is not provisioned.** A full source rotation requires multiple eligible visits or requests over several minutes. A guaranteed daily full refresh when nobody visits needs a trusted scheduler/queue connected to the refresh writer. The app does not claim that every company has refreshed simply because someone opened the feed. Signed-in users can request one due batch through `POST /api/refresh`; the same limits still apply.
+**Remote D1 updates independently through the deployed ingestion Worker.** It checks four due sources every five minutes, with a six-hour cooldown after success and a one-hour retry after failure. Local preview uses a separate D1 database and retains traffic-driven refresh as a fallback. `/api/refresh` detects a recent scheduler heartbeat in its own database; source health records show which publishers actually refreshed. Signed-in users can request one due batch through `POST /api/refresh`; the same limits still apply. See [INGESTION.md](INGESTION.md).
 
 See `lib/server/README.md` for bounds, source behavior and API contracts. The original Python collector and the larger source-research documents remain in the parent `blogs` folder.
 

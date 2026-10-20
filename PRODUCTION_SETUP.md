@@ -89,5 +89,9 @@ Official references checked on 19 October 2026:
 2. Integrate the selected identity provider and test account isolation, ownership checks, sign-out, and interrupted saves.
 3. Provision production data storage, apply migrations, import content, and verify reads/writes using a real account.
 4. Operate the deployed scheduled ingestion: review source failures, verify daily coverage and configure external alerts.
-5. Refine recommendations from explicit interests, follows, saved items and read history. Avoid invented global popularity metrics.
+5. Server recommendations and authentic event-based trends are implemented; review quality and performance with real users. See RECOMMENDATIONS.md.
 6. Publish staging, verify desktop/mobile and accessibility, then launch the production domain.
+
+## SQL domain upgrade
+
+Company/source/topic entities, keyword aliases, article-topic links, normalized user-history projections and server-ranked feed editions are implemented. Both local and remote databases have been migrated with backups and identity preservation checks. See [RECOMMENDATIONS.md](RECOMMENDATIONS.md) for current behavior and verification commands.

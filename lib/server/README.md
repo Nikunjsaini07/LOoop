@@ -4,12 +4,15 @@ The API starts with **1,260 real collected articles and all 37 companies**, expo
 
 ## API
 
-- `GET /api/articles?pageSize=24&cursor=0`: returns `articles`, `sources`, `total`, `hasMore`, `nextCursor`, `snapshot`, `updatedAt`, `liveAvailable`. Optional `company` and `topic` accept comma-separated values; `q` searches title, abstract and company. `ids` accepts up to 500 article IDs (useful for the saved library); `exclude` accepts comma-separated terms excluded from title/abstract/company. Values within a filter are OR; company, topic, IDs and query groups are AND. Exclusions are hard constraints. Pass the original `snapshot` alongside subsequent cursors so newly discovered articles do not shift the current list. The snapshot is a discovery-time cutoff, not a historical copy of mutable publisher metadata.
-- `GET /api/sources`: fixed verified catalog. Source modes are `feed`, `listing` and `manual`.
-- `GET /api/profile`: signed-in user's profile, version and identity; anonymous requests return 401. The app may maintain an explicitly device-local profile for anonymous readers. Profile fields: `name`, `bio`, `follows`, `interests`, `customFeeds`, `bookmarks`, `activity`.
-- `POST /api/profile`: JSON partial profile or `{profile,version,event?}`. Ownership comes exclusively from the dispatch-owned ChatGPT identity helper. Optional `version` checks stale clients; database compare-and-swap prevents concurrent overwrites. A 409 requires reloading/merging before retry. An event is `{kind:"open"|"save",articleId}` and increments a server UTC activity day. Opens and saves never imply that an external article was fully read. Client activity history can also be synced as profile data; this is personal tracking, not trusted leaderboard data.
-- `GET /api/refresh`: per-source refresh timestamps/errors and refresh mode.
-- `POST /api/refresh`: signed-in, same-origin request runs one due batch, returning status and source results. There is no submitted URL parameter or force-refresh bypass.
+- `GET /api/articles?pageSize=24`: server-ranked edition. `POST` accepts `{profile:{follows,interests,bookmarks,readLogs,activity}}` for private personalization, including device-local guest preferences. It does not persist these preferences or turn history into community metrics.
+- Filters: `company`, `topic`, `signal`, `q`, `exclude`, `ids`; modes: `personal`, `latest`, `following`, `trending`. Topic chips and saved-feed rules stay ANDed. Use `period=today|week|archive` for trends.
+- Subsequent pages pass the opaque `nextCursor` and original `snapshot`. Cursors are tied to the edition/preferences/owner; 409 means refresh the edition. Responses include `rankingVersion:2`, `rankingBasis`, `contentVersion`, `topicCatalog`, `total`, `hasMore` and the original article fields.
+- `GET /api/sources`: SQL source catalog, with the public seed as an offline fallback.
+- `GET/POST /api/profile`: verified account profile with owner checks and version compare-and-swap; anonymous profiles stay in browser storage. Database triggers maintain private normalized follows/bookmarks/read-log projections.
+- `POST /api/engagement`: authenticated, same-origin explicit read/save toggle. Deduplicated and server-timestamped; replayed profile history and anonymous activity never generate global votes.
+- `GET /api/refresh`: source health and scheduler heartbeat. `POST` remains an authenticated, same-origin request for one due batch.
+
+See [RECOMMENDATIONS.md](../../RECOMMENDATIONS.md) for scoring, schema, privacy and cache details.
 
 ## Refresh behavior and limits
 
@@ -17,7 +20,7 @@ With a migrated D1 database, public article requests start a small background re
 
 Fetches use only the fixed source catalog, validate HTTPS redirect destinations, cap bodies at 3 MiB, cap redirect hops, and time out at 7.5 seconds per fetch. A listing uses two bounded fetches (robots and listing). Syndication rejects DTD/entity declarations and limits ingestion to 100 items; listing ingestion is limited to 30 links matching the approved patterns. ETag/Last-Modified are used for feeds when available. D1 upserts deduplicate URLs and retain initial discovery times; archive reads merge the bundled seed with up to 20,000 live rows.
 
-**Remote D1 also has an independent scheduled ingestion Worker.** `readzz-ingestion` runs every five minutes against remote `reads`, using the same source parser, writer and cooldown as traffic-driven refresh. See [INGESTION.md](../../INGESTION.md) for deployment and verification. Local preview still uses local D1; its `/api/refresh` mode continues to describe its own traffic-driven behavior. A successful trigger does not imply every publisher was reachable; inspect source health for coverage.
+**Remote D1 also has an independent scheduled ingestion Worker.** `readzz-ingestion` runs every five minutes against remote `reads`, using the same source parser, writer and cooldown as traffic-driven refresh. See [INGESTION.md](../../INGESTION.md) for deployment and verification. Local preview still uses local D1. `/api/refresh` detects a recent ingestion heartbeat in its own database and reports scheduled or traffic-driven updates accordingly. A successful trigger does not imply every publisher was reachable; inspect source health for coverage.
 
 The tables are declared in `db/schema.ts`; generate/apply migrations through the starter's D1 workflow. Request handlers never create tables. Missing/unmigrated storage preserves public seed reading but returns a clear 503 for account writes.
 
