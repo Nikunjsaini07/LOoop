@@ -8,6 +8,8 @@ export type Article = {
   published_at: string | null;
   discovered_at: string;
   topics: string[];
+  recommendationReason?: string;
+  engagement?: { reads: number; saves: number };
 };
 
 export type Source = {
@@ -62,8 +64,10 @@ export type ArticlePage = {
   nextCursor: string | null;
   snapshot: string;
   updatedAt: string;
+  rankingBasis?: "personal" | "engagement" | "freshness" | "latest";
+  rankingVersion?: number;
+  contentVersion?: string;
+  topicCatalog?: { id: string; name: string; parent_id: string | null }[];
 };
 
-export const TOPICS = [
-  "AI & ML", "Systems", "Data", "Infrastructure", "Security", "Frontend", "Mobile", "Product",
-] as const;
+export { TOPICS } from "./topics";

@@ -7,6 +7,9 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseEnv } from 'node:util';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const normalizeSql = value => String(value??'').replace(/IF NOT EXISTS\s+/gi,'').replace(/\s+/g,' ').trim().replace(/;$/,'');
+const triggerSources=readFileSync(join(ROOT,'drizzle','0001_readzz_domain.sql'),'utf8');
+const reviewedTriggers=new Map([...triggerSources.matchAll(/CREATE TRIGGER IF NOT EXISTS (\w+)\b[\s\S]*?\bEND;/g)].map(match=>[match[1],normalizeSql(match[0])]));
 const EXPECTED = {
   articles: { id: ['TEXT', 1, 1], company_id: ['TEXT', 1, 0], company: ['TEXT', 1, 0], title: ['TEXT', 1, 0], url: ['TEXT', 1, 0], summary: ['TEXT', 1, 0], published_at: ['TEXT', 0, 0], discovered_at: ['TEXT', 1, 0], topics: ['TEXT', 1, 0] },
   profiles: { user_id: ['TEXT', 1, 1], data: ['TEXT', 1, 0], version: ['INTEGER', 1, 0], updated_at: ['TEXT', 1, 0] },
@@ -31,7 +34,7 @@ export function validateSchema(tables, columns, urlIndexes, triggers = []) {
     })) throw new Error(`Remote table ${table} is incompatible with the committed app schema. No changes made.`);
   }
   if (!urlIndexes.some(index => index.unique && index.columns.length === 1 && index.columns[0] === 'url')) throw new Error('Remote articles.url requires a unique index. No changes made.');
-  if (triggers.some(trigger => Object.hasOwn(EXPECTED, trigger.tbl_name))) throw new Error('Remote app tables contain unreviewed triggers. No changes made.');
+  if (triggers.some(trigger => Object.hasOwn(EXPECTED, trigger.tbl_name) && reviewedTriggers.get(trigger.name)!==normalizeSql(trigger.sql))) throw new Error('Remote app tables contain unreviewed triggers. No changes made.');
   return 'compatible';
 }
 
@@ -108,7 +111,7 @@ async function main() {
   const schemaPath = join(output, `${stamp}-schema.sql`);
   wrangler('d1', 'export', 'DB', '--remote', '--skip-confirmation', '--output', schemaPath, '--no-data');
   if (!statSync(schemaPath).isFile()) throw new Error('Remote schema export was not saved.');
-  const objects = execute("SELECT type,name,tbl_name FROM sqlite_master WHERE type IN ('table','trigger') AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%'");
+  const objects = execute("SELECT type,name,tbl_name,sql FROM sqlite_master WHERE type IN ('table','trigger') AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%'");
   const tables = objects.filter(item => item.type === 'table').map(item => item.name);
   const columns = {};
   for (const name of Object.keys(EXPECTED).filter(name => tables.includes(name))) columns[name] = execute(`PRAGMA table_info('${name}')`);
@@ -138,12 +141,13 @@ async function main() {
       if (!statSync(report.backupFile).isFile() || !statSync(report.backupFile).size) throw new Error('Pre-import database backup was not saved. No changes made.');
     }
     if (schema === 'fresh') {
-      const migrations = readdirSync(join(ROOT, 'drizzle')).filter(file => file.endsWith('.sql')).sort();
-      if (migrations.length !== 1) throw new Error('Fresh schema initialization currently expects one reviewed migration. Apply/review additional migrations explicitly.');
+      const migrations = readdirSync(join(ROOT, 'drizzle')).filter(file => file.startsWith('0000_') && file.endsWith('.sql')).sort();
+      if (migrations.length !== 1) throw new Error('Fresh schema initialization expects the reviewed initial migration.');
       executeFile(join(ROOT, 'drizzle', migrations[0]));
       schema = 'compatible';
     }
     executeFile(exportReport.sqlFile);
+    if(!tables.includes('topics')) subprocess(process.execPath,['--experimental-strip-types',join(ROOT,'scripts','domain-upgrade.mjs'),'--remote']);
     report.remoteChanged = true;
   } else if (schema !== 'compatible') throw new Error('Remote app schema is empty. Import before verifying.');
   const afterRows = execute('SELECT id,company_id,url,discovered_at FROM articles');

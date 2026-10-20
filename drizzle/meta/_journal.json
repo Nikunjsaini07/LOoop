@@ -8,6 +8,13 @@
       "when": 1792347832399,
       "tag": "0000_glamorous_richard_fisk",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1792489275376,
+      "tag": "0001_readzz_domain",
+      "breakpoints": true
     }
   ]
 }

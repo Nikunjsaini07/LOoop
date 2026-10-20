@@ -1,19 +1,9 @@
 import type { ActivityDay, Article, CustomFeed, Profile, ReadLog, Source } from "../types";
 
-const topicRules: [string, RegExp][] = [
-  ["AI & ML", /\b(ai|ml|llm|llms|models?|machine learning|neural|inference|agents?|embeddings?|transformers?|gpus?)\b/i],
-  ["Systems", /\b(distributed|systems?|architecture|latency|performance|scalability|scaling|concurrency|reliability|rust|network|networking|cache|caching)\b/i],
-  ["Data", /\b(data|databases?|sql|postgres|postgresql|clickhouse|analytics|storage|kafka|streaming|pipelines?)\b/i],
-  ["Infrastructure", /\b(cloud|infrastructure|kubernetes|deployment|deploy|containers?|serverless|observability|aws|sre|devops|terraform)\b/i],
-  ["Security", /\b(security|secure|privacy|authentication|authorization|vulnerability|encryption|threat|identity|safety)\b/i],
-  ["Frontend", /\b(frontend|front-end|react|javascript|typescript|css|browser|web performance|web component|accessibility|design system)\b/i],
-  ["Mobile", /\b(mobile|android|ios|swift|kotlin|flutter|react native)\b/i],
-  ["Product", /\b(product|developer experience|workflows?|teams?|design|customers?|launch|introducing)\b/i],
-];
+import { classifyTopics } from "../topics.ts";
 
 export function inferTopics(title: string, summary: string): string[] {
-  const matches = topicRules.filter(([, expression]) => expression.test(`${title} ${summary}`)).map(([name]) => name);
-  return matches.length ? matches.slice(0, 3) : ["Product"];
+  return classifyTopics(title, summary).map(topic => topic.name);
 }
 
 const entities: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", ndash: "–", mdash: "—", hellip: "…", rsquo: "’", lsquo: "‘", rdquo: "”", ldquo: "“" };
@@ -63,7 +53,7 @@ export async function articleId(url: string): Promise<string> {
   return [...new Uint8Array(digest)].map((part) => part.toString(16).padStart(2, "0")).join("").slice(0, 24);
 }
 
-export async function parseFeed(xml: string, source: Source, discoveredAt: string): Promise<Article[]> {
+export async function parseFeed(xml: string, source: Source, discoveredAt: string, classify?: (title:string,summary:string)=>{name:string}[]): Promise<Article[]> {
   // This bounded syndication reader never evaluates DTDs, entities, or scripts.
   if (/<!DOCTYPE|<!ENTITY/i.test(xml) || !/<(?:[\w-]+:)?(?:rss|feed|RDF)\b/i.test(xml.slice(0, 2000))) throw new Error("Not a supported RSS or Atom document");
   const blocks = [...xml.matchAll(/<(?:[\w-]+:)?(item|entry)\b[^>]*>([\s\S]*?)<\/(?:[\w-]+:)?\1\s*>/gi)].slice(0, 100);
@@ -93,7 +83,7 @@ export async function parseFeed(xml: string, source: Source, discoveredAt: strin
     // An Atom updated timestamp does not establish original publication time.
     const publishedAt = date && Number.isFinite(date.getTime()) && date.getTime() <= Date.now() + 86400000 ? date.toISOString() : null;
     articles.push({ id: await articleId(url), company_id: source.id, company: source.company, title, url, summary,
-      published_at: publishedAt, discovered_at: discoveredAt, topics: inferTopics(title, summary) });
+      published_at: publishedAt, discovered_at: discoveredAt, topics: classify?classify(title,summary).map(topic=>topic.name):inferTopics(title, summary) });
     seen.add(url);
   }
   return articles;
