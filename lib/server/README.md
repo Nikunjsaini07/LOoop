@@ -1,4 +1,4 @@
-# Scroll data service
+# readzz data service
 
 The API starts with **1,260 real collected articles and all 37 companies**, exported from the local collector on 18 October 2026. These are publisher titles, short excerpts and original links. The seed is a recent collection, not a complete historical archive. Keyword rules assign initial topic tags; these are not a trained classification model.
 
@@ -13,11 +13,11 @@ The API starts with **1,260 real collected articles and all 37 companies**, expo
 
 ## Refresh behavior and limits
 
-With a migrated D1 database, public article requests start a small background refresh through Cloudflare `waitUntil`; article responses read the existing archive immediately. One global D1 cooldown permits a batch per minute, and each source is attempted at most every six hours. Four sources are processed concurrently per batch, oldest attempt first. RSS/Atom and approved listing adapters are included; listing extraction first checks robots.txt and skips on policy/check failure. LinkedIn remains manual. Listing markup changes and upstream errors leave collected articles intact and appear in source health.
+With a migrated D1 database, public article requests start a small background refresh through Cloudflare `waitUntil`; article responses read the existing archive immediately. One global D1 cooldown permits a batch per minute. Successful sources refresh at six-hour intervals; failed sources retry after one hour. Four sources are processed concurrently per batch, oldest attempt first. RSS/Atom and approved listing adapters are included; listing extraction first checks robots.txt and skips on policy/check failure. LinkedIn remains manual. Listing markup changes and upstream errors leave collected articles intact and appear in source health.
 
 Fetches use only the fixed source catalog, validate HTTPS redirect destinations, cap bodies at 3 MiB, cap redirect hops, and time out at 7.5 seconds per fetch. A listing uses two bounded fetches (robots and listing). Syndication rejects DTD/entity declarations and limits ingestion to 100 items; listing ingestion is limited to 30 links matching the approved patterns. ETag/Last-Modified are used for feeds when available. D1 upserts deduplicate URLs and retain initial discovery times; archive reads merge the bundled seed with up to 20,000 live rows.
 
-**Refresh is traffic-driven, not an installed unattended scheduler.** A full rotation needs multiple eligible requests over several minutes. For a guaranteed daily full roster refresh when nobody visits, a trusted hosting scheduler/queue must invoke the shared refresh writer repeatedly under a proper service identity; no scheduler credential or global cron is provisioned in this build. A browser opening the app does not prove every company has already refreshed that day. This mode is also returned by `/api/refresh`.
+**Remote D1 also has an independent scheduled ingestion Worker.** `readzz-ingestion` runs every five minutes against remote `reads`, using the same source parser, writer and cooldown as traffic-driven refresh. See [INGESTION.md](../../INGESTION.md) for deployment and verification. Local preview still uses local D1; its `/api/refresh` mode continues to describe its own traffic-driven behavior. A successful trigger does not imply every publisher was reachable; inspect source health for coverage.
 
 The tables are declared in `db/schema.ts`; generate/apply migrations through the starter's D1 workflow. Request handlers never create tables. Missing/unmigrated storage preserves public seed reading but returns a clear 503 for account writes.
 

@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import type { Article, Source } from "../types";
 import seedData from "./seed.json";
+import { writeArticles } from "./article-writer";
 
 export const sources = seedData.sources as Source[];
 export const seedArticles = seedData.articles as Article[];
@@ -58,21 +59,8 @@ export async function loadArticles(): Promise<{ articles: Article[]; updatedAt: 
   }
 }
 
-export async function upsertArticles(articles: Article[]): Promise<void> {
-  if (!articles.length) return;
-  const db = database();
-  // A single feed is bounded to 100 items. Small batches fit Worker/D1 limits.
-  for (let offset = 0; offset < articles.length; offset += 40) {
-    await db.batch(articles.slice(offset, offset + 40).map((article) => db.prepare(`
-      INSERT INTO articles (id,company_id,company,title,url,summary,published_at,discovered_at,topics)
-      VALUES (?,?,?,?,?,?,?,?,?)
-      ON CONFLICT(url) DO UPDATE SET title=excluded.title,summary=excluded.summary,
-        published_at=COALESCE(excluded.published_at,articles.published_at),topics=excluded.topics,
-        discovered_at=CASE WHEN julianday(excluded.discovered_at) < julianday(articles.discovered_at)
-          THEN excluded.discovered_at ELSE articles.discovered_at END
-    `).bind(article.id, article.company_id, article.company, article.title, article.url, article.summary,
-      article.published_at, article.discovered_at, JSON.stringify(article.topics))));
-  }
+export async function upsertArticles(articles: Article[]): Promise<number> {
+  return writeArticles(database(), articles);
 }
 
 export function isSameOrigin(request: Request): boolean {

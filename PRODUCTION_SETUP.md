@@ -16,9 +16,12 @@ The current app is a functioning local prototype with an imported article databa
 | Current authentication | Sites-owned ChatGPT identity; development-only local mock |
 | Guest profile | Browser-local storage |
 | Signed-in profile | D1 `profiles` row keyed by verified account ID |
-| Public production database | Not provisioned/verified in this checkout |
+| Remote database | Existing `reads` D1, imported and verified; separate from local preview |
+| Scheduled ingestion | Deployed `readzz-ingestion` Worker; five-minute trigger, six-hour normal source interval |
 
 D1 uses a Worker binding, rather than a PostgreSQL-style `DATABASE_URL`. Local files and the localhost API are not public database endpoints. Database contents and user profiles are not committed to Git. The bundled `lib/server/seed.json` is a public article fallback.
+
+The remote archive now updates independently of website traffic. See [INGESTION.md](INGESTION.md) for the deployed scheduler, source coverage, failure handling and verification commands. The public website itself is not deployed or bound to remote D1 yet.
 
 Repeat a collector import after collecting new articles:
 
@@ -77,7 +80,7 @@ Official references checked on 19 October 2026:
 3. **Domain:** intended production domain/origin and access to configure its DNS. Redirects and allowed auth origins must match it.
 4. **Clerk app (if selected):** publishable key, backend secret key or appropriate JWT verification key, enabled sign-in providers and production auth domain/redirect settings. Configure keys in local environment/hosting secrets; do not paste private keys into chat or commit them. Provider client credentials belong in the auth provider's dashboard. Webhook signing secret is needed only if webhook handlers are implemented.
 5. **Cloudflare production database:** account/project access and real D1 database ID/binding `DB`; apply migrations and import the public archive there. Do not substitute the preview's placeholder database ID.
-6. **Daily ingestion:** provision an unattended scheduled refresh/queue with retries and monitoring. Current refresh is traffic driven; visiting the app is not a guaranteed daily full crawl.
+6. **Daily ingestion:** the scheduled Worker is deployed against remote `reads`. Confirm source health and hosting limits, add external alerts if needed, and bind the public app to the same database. Local preview remains independent.
 7. **Operations:** backup/restore policy, error reporting and basic service monitoring. Add email-provider credentials only if email digests are actually implemented; the current Digest cadence selector is a saved preference, not an email delivery system.
 
 ## Development order
@@ -85,6 +88,6 @@ Official references checked on 19 October 2026:
 1. Keep the existing UI and verify the complete article → original → explicit read log → profile flow.
 2. Integrate the selected identity provider and test account isolation, ownership checks, sign-out, and interrupted saves.
 3. Provision production data storage, apply migrations, import content, and verify reads/writes using a real account.
-4. Add scheduled ingestion, deduplication, source health, retry/backoff and observability.
+4. Operate the deployed scheduled ingestion: review source failures, verify daily coverage and configure external alerts.
 5. Refine recommendations from explicit interests, follows, saved items and read history. Avoid invented global popularity metrics.
 6. Publish staging, verify desktop/mobile and accessibility, then launch the production domain.
