@@ -1,13 +1,15 @@
 import { getChatGPTUser } from "@/app/chatgpt-auth";
 import { emptyProfile, recordActivity, sanitizeProfile, ValidationError } from "@/lib/server/core";
-import { database, isSameOrigin, jsonError, sources } from "@/lib/server/store";
+import { database, isSameOrigin, jsonError } from "@/lib/server/store";
 import type { Profile } from "@/lib/types";
+import { readSources } from "@/lib/server/catalog";
 
 export const dynamic = "force-dynamic";
 
 async function storedProfile(userId: string, name: string) {
   const row = await database().prepare("SELECT data,version FROM profiles WHERE user_id=?").bind(userId).first<{ data: string; version: number }>();
-  return { profile: row ? sanitizeProfile(JSON.parse(row.data) as Profile, emptyProfile(name), new Set(sources.map((source) => source.id))) : emptyProfile(name), version: row?.version ?? 0 };
+  const catalog=await readSources(database());
+  return { profile: row ? sanitizeProfile(JSON.parse(row.data) as Profile, emptyProfile(name), new Set(catalog.map((source) => source.id))) : emptyProfile(name), version: row?.version ?? 0 };
 }
 
 export async function GET() {
@@ -32,7 +34,7 @@ export async function POST(request: Request) {
     if (data.owner !== undefined && data.owner !== user.userId) return jsonError("Your signed-in account changed. Reload before saving.", 409);
     const stored = await storedProfile(user.userId, user.fullName || "Reader");
     if (data.version !== undefined && data.version !== stored.version) return jsonError("Your profile changed on another device. Reload before saving.", 409);
-    let profile = sanitizeProfile(data.profile ?? data, stored.profile, new Set(sources.map((source) => source.id)));
+    let profile = sanitizeProfile(data.profile ?? data, stored.profile, new Set((await readSources(database())).map((source) => source.id)));
     if (data.event !== undefined) profile = recordActivity(profile, data.event);
     const now = new Date().toISOString();
     const db = database();

@@ -76,7 +76,7 @@ function robotsAllows(body: string, pathname: string): boolean {
   return best.allow;
 }
 
-async function fetchListing(source: Source, now: string, fetcher: Fetcher): Promise<Article[]> {
+async function fetchListing(source: Source, now: string, fetcher: Fetcher, classify?: (title:string,summary:string)=>{name:string}[]): Promise<Article[]> {
   const origin = new URL(source.blog_url).origin;
   // Robots failures are conservative: skip the listing rather than bypassing its policy.
   const robots = await boundedFetch(`${origin}/robots.txt`, {}, fetcher);
@@ -99,13 +99,13 @@ async function fetchListing(source: Source, now: string, fetcher: Fetcher): Prom
     const date = dateValue ? new Date(dateValue) : null;
     entries.set(url, { id: await articleId(url), company_id: source.id, company: source.company, title, url, summary,
       published_at: date && Number.isFinite(date.getTime()) ? date.toISOString() : null,
-      discovered_at: now, topics: inferTopics(title, summary) });
+      discovered_at: now, topics: classify?classify(title,summary).map(topic=>topic.name):inferTopics(title, summary) });
   }
   if (!entries.size) throw new Error("Publisher listing markup changed or no entries were available");
   return [...entries.values()];
 }
 
-async function refreshSource(db: D1Database, source: Source, state: RefreshState | undefined, now: string, fetcher: Fetcher): Promise<RefreshResult> {
+async function refreshSource(db: D1Database, source: Source, state: RefreshState | undefined, now: string, fetcher: Fetcher, classify?: (title:string,summary:string)=>{name:string}[]): Promise<RefreshResult> {
   try {
     let articles: Article[];
     let response: Response | undefined;
@@ -115,8 +115,8 @@ async function refreshSource(db: D1Database, source: Source, state: RefreshState
       if (state?.last_modified) headers["If-Modified-Since"] = state.last_modified;
       const result = await boundedFetch(source.feed_urls[0], headers, fetcher);
       response = result.response;
-      articles = response.status === 304 ? [] : await parseFeed(result.body, source, now);
-    } else articles = await fetchListing(source, now, fetcher);
+      articles = response.status === 304 ? [] : await parseFeed(result.body, source, now, classify);
+    } else articles = await fetchListing(source, now, fetcher, classify);
     const changed = await writeArticles(db, articles);
     await db.prepare(`INSERT INTO source_refresh (source_id,last_attempt,last_success,etag,last_modified,error) VALUES (?,?,?,?,?,NULL)
       ON CONFLICT(source_id) DO UPDATE SET last_attempt=excluded.last_attempt,last_success=excluded.last_success,
@@ -131,7 +131,7 @@ async function refreshSource(db: D1Database, source: Source, state: RefreshState
   }
 }
 
-export async function refreshSources(db: D1Database, sources: Source[], options: { now?: number; fetcher?: Fetcher } = {}): Promise<{ status: string; results: RefreshResult[]; remaining: number }> {
+export async function refreshSources(db: D1Database, sources: Source[], options: { now?: number; fetcher?: Fetcher; classify?:(title:string,summary:string)=>{name:string}[] } = {}): Promise<{ status: string; results: RefreshResult[]; remaining: number }> {
   const timestamp = options.now ?? Date.now();
   const now = new Date(timestamp).toISOString();
   const expires = new Date(timestamp + 60000).toISOString();
@@ -145,6 +145,6 @@ export async function refreshSources(db: D1Database, sources: Source[], options:
     .sort((a, b) => (stateById.get(a.id)?.last_attempt || "").localeCompare(stateById.get(b.id)?.last_attempt || ""));
   const batch = due.slice(0, BATCH_SIZE);
   // Four concurrent fixed publishers, bounded bytes and deadlines; no submitted URLs are fetched.
-  const results = await Promise.all(batch.map((source) => refreshSource(db, source, stateById.get(source.id), now, fetcher)));
+  const results = await Promise.all(batch.map((source) => refreshSource(db, source, stateById.get(source.id), now, fetcher, options.classify)));
   return { status: batch.length ? "complete" : "fresh", results, remaining: due.length - batch.length };
 }
