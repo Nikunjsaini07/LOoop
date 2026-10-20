@@ -1,0 +1,310 @@
+{
+  "verifiedAt": "2026-10-20T10:45:22.553455+00:00",
+  "publishers": {
+    "adobe": {
+      "company": "Adobe",
+      "file": "adobe.ico",
+      "page": "https://www.adobe.com/",
+      "asset": "https://www.adobe.com/favicon.ico",
+      "sha256": "5eed69e764f1d40b943a19b4b36aca72519b2626dd519891173d7728a74d821c",
+      "bytes": 15086
+    },
+    "airbnb": {
+      "company": "Airbnb",
+      "file": "airbnb.ico",
+      "page": "https://www.airbnb.com/",
+      "asset": "https://www.airbnb.com/favicon.ico",
+      "sha256": "9ba669d9ce07a2d4689edadaf5178a3296442567f4006e8e0e7de94b845c4a81",
+      "bytes": 4286
+    },
+    "anthropic": {
+      "company": "Anthropic",
+      "file": "anthropic.png",
+      "page": "https://www.anthropic.com/",
+      "asset": "https://cdn.prod.website-files.com/67ce28cfec624e2b733f8a52/681d52619fec35886a7f1a70_favicon.png",
+      "sha256": "47718065aeeb968b381b070c66c90d9c3ae95b09a0ee24e78b9e12ae5c4f11c7",
+      "bytes": 1359
+    },
+    "apple": {
+      "company": "Apple",
+      "file": "apple.ico",
+      "page": "https://www.apple.com/",
+      "asset": "https://www.apple.com/favicon.ico",
+      "sha256": "5493c61cf725cf3a1d63cd9d07de75b0d6faa5564e772f7d0a6074f341442938",
+      "bytes": 22382
+    },
+    "atlassian": {
+      "company": "Atlassian",
+      "file": "atlassian.ico",
+      "page": "https://www.atlassian.com/",
+      "asset": "https://www.atlassian.com/favicon.ico",
+      "sha256": "43baad43fa76aa0cf465221172dd48c8acee360fcb2852d191aed588e23daf19",
+      "bytes": 15086
+    },
+    "aws": {
+      "company": "AWS",
+      "file": "aws.ico",
+      "page": "https://aws.amazon.com/",
+      "asset": "https://a0.awsstatic.com/libra-css/images/site/fav/favicon.ico",
+      "sha256": "1dc902bf12f36533773b6e0399ca6dcfe2e19b88c7d1c3d9f211a4082d28d219",
+      "bytes": 1150
+    },
+    "clickhouse": {
+      "company": "ClickHouse",
+      "file": "clickhouse.svg",
+      "page": "https://clickhouse.com/",
+      "asset": "https://clickhouse.com/icon0.svg?icon0.14ll1zwu0qk95.svg",
+      "sha256": "97e3c3f37814cf2cecd452d7d425f6d26dcedc7230a555327d797d370a01261c",
+      "bytes": 434
+    },
+    "cloudflare": {
+      "company": "Cloudflare",
+      "file": "cloudflare.png",
+      "page": "https://www.cloudflare.com/",
+      "asset": "https://www.cloudflare.com/favicon.ico",
+      "sha256": "5414bc6e4b3f6e10f99b5d37abf4420da4dcaece66f8f2c08e090e87267adbc5",
+      "bytes": 908
+    },
+    "confluent": {
+      "company": "Confluent",
+      "file": "confluent.png",
+      "page": "https://www.confluent.io/",
+      "asset": "https://www.confluent.io/favicon.ico",
+      "sha256": "6949865a09b591cd847c53f0e5acb59565a6f1391792b601822c3c7fd7e32f0e",
+      "bytes": 11904
+    },
+    "cursor": {
+      "company": "Cursor",
+      "file": "cursor.svg",
+      "page": "https://cursor.com/",
+      "asset": "https://cursor.com/marketing-static/favicon-light.svg",
+      "sha256": "78f169abca311d70e18ada789ccf1a55b4ca0306822f21a9ab0c2658ed88dbe0",
+      "bytes": 4388
+    },
+    "databricks": {
+      "company": "Databricks",
+      "file": "databricks.png",
+      "page": "https://www.databricks.com/",
+      "asset": "https://www.databricks.com/en-website-assets/favicon-32x32.png?v=c9b9916c3b27dc51866c46b79a6e9b88",
+      "sha256": "3c01c2e8237a9d5fbbb1e77df230223d9c2b3b4148ad4eff2b9e7dc5ce9bb60f",
+      "bytes": 914
+    },
+    "datadog": {
+      "company": "Datadog",
+      "file": "datadog.png",
+      "page": "https://www.datadoghq.com/",
+      "asset": "https://corp.dd-static.net/img/favicons/dd-favicon.png",
+      "sha256": "50d647eff1b1458c1a778975387c78c6634f23f77a7f1b4beecb21b74d9dcf65",
+      "bytes": 22423
+    },
+    "discord": {
+      "company": "Discord",
+      "file": "discord.png",
+      "page": "https://discord.com/",
+      "asset": "https://cdn.prod.website-files.com/6257adef93867e50d84d30e2/62fddf0fde45a8baedcc7ee5_847541504914fd33810e70a0ea73177e%20(2)-1.png",
+      "sha256": "11848b5f1c8a7f294c6211c2f0d0dc83a8a28bfe1ef0829a8dacfdf475c5e5a2",
+      "bytes": 557
+    },
+    "dropbox": {
+      "company": "Dropbox",
+      "file": "dropbox.ico",
+      "page": "https://www.dropbox.com/",
+      "asset": "https://cfl.dropboxstatic.com/static/metaserver/static/images/favicon.ico",
+      "sha256": "c0906d540d89dbe1f09b24f17b7f35b81350e8d381c1558b075c28ea913c450d",
+      "bytes": 4286
+    },
+    "elastic": {
+      "company": "Elastic",
+      "file": "elastic.svg",
+      "page": "https://www.elastic.co/",
+      "asset": "https://www.elastic.co/favicon.svg",
+      "sha256": "f602ddacafcf305798018ff2ab21f52b889a72e2e04d0031f45d29dd652c9d23",
+      "bytes": 3314
+    },
+    "figma": {
+      "company": "Figma",
+      "file": "figma.svg",
+      "page": "https://www.figma.com/",
+      "asset": "https://static.figma.com/app/icon/2/favicon.svg",
+      "sha256": "e6227b7dbc49c86da6f4ccfa02ba439428106b0ca627a0a33ea6ad1e09f335b3",
+      "bytes": 864
+    },
+    "fly": {
+      "company": "Fly.io",
+      "file": "fly.png",
+      "page": "https://fly.io/",
+      "asset": "https://fly.io/phx/ui/images/favicon/favicon-32x32-803ad2058b86df3f8a9f8af1505a59d2.png?vsn=d",
+      "sha256": "50ced2a240deee800188f0aa51af8e3151509fa86bdd4455bc90c73e50f9571b",
+      "bytes": 1361
+    },
+    "github": {
+      "company": "GitHub",
+      "file": "github.svg",
+      "page": "https://github.com/",
+      "asset": "https://github.githubassets.com/favicons/favicon.svg",
+      "sha256": "6a9577cd4f7fa6b75bde1025af85b944e9dd1388373b55ccba6e9f80ac2eae60",
+      "bytes": 959
+    },
+    "google": {
+      "company": "Google",
+      "file": "google.ico",
+      "page": "https://www.google.com/",
+      "asset": "https://www.google.com/favicon.ico",
+      "sha256": "6da5620880159634213e197fafca1dde0272153be3e4590818533fab8d040770",
+      "bytes": 5430
+    },
+    "linkedin": {
+      "company": "LinkedIn",
+      "file": "linkedin.ico",
+      "page": "https://www.linkedin.com/",
+      "asset": "https://static.licdn.com/aero-v1/sc/h/al2o9zrvru7aqj8e1x2rzsrca",
+      "sha256": "19b079c09197fba68d021fa3ba394ec91703909ffd237efa3eb9a2bca13148ec",
+      "bytes": 24838
+    },
+    "meta": {
+      "company": "Meta",
+      "file": "meta.svg",
+      "page": "https://about.meta.com/",
+      "asset": "https://static.xx.fbcdn.net/rsrc.php/yf/r/-7pQO6hUGK_.svg",
+      "sha256": "9c354dc7d40f7862df2dfb34df05ae08c3e956d55a450379803d6cac6878a63e",
+      "bytes": 8912
+    },
+    "microsoft": {
+      "company": "Microsoft",
+      "file": "microsoft.ico",
+      "page": "https://www.microsoft.com/",
+      "asset": "https://www.microsoft.com/favicon.ico?v2",
+      "sha256": "90cdaf487716184e4034000935c605d1633926d348116d198f355a98b8c6cd21",
+      "bytes": 17174
+    },
+    "netflix": {
+      "company": "Netflix",
+      "file": "netflix.ico",
+      "page": "https://about.netflix.com/en",
+      "asset": "https://about.netflix.com/favicon.ico",
+      "sha256": "af0abcc75665e517c473fc9bd59692083a6a316f656a39e95a16cb1229c22852",
+      "bytes": 15086
+    },
+    "notion": {
+      "company": "Notion",
+      "file": "notion.ico",
+      "page": "https://www.notion.com/",
+      "asset": "https://www.notion.com/front-static/favicon.ico",
+      "sha256": "541fc85f92e348bcf46f70944b95fd558d16adbc5a0698eaa1239dccd8c9e455",
+      "bytes": 32038
+    },
+    "nvidia": {
+      "company": "NVIDIA",
+      "file": "nvidia.ico",
+      "page": "https://www.nvidia.com/",
+      "asset": "https://www.nvidia.com/favicon.ico",
+      "sha256": "bedcb14e0470ff8abe26405a630e9604ac4fa581b385a7cfb00420c22f541b6e",
+      "bytes": 25214
+    },
+    "openai": {
+      "company": "OpenAI",
+      "file": "openai.ico",
+      "page": "https://openai.com/",
+      "asset": "https://openai.com/favicon.ico",
+      "sha256": "9747c13cd87b36ebf2ab567b9d0bc2ff49b5a4f46f4f51e4d053024f579fb9a0",
+      "bytes": 15406
+    },
+    "pinterest": {
+      "company": "Pinterest",
+      "file": "pinterest.png",
+      "page": "https://www.pinterest.com/",
+      "asset": "https://s.pinimg.com/webapp/favicon_48x48-7470a30d.png",
+      "sha256": "33b3f3b722870ca7a444c3bf47a3476dc29bb79e2ad92c102fb7aec6abb9bf19",
+      "bytes": 1618
+    },
+    "ramp": {
+      "company": "Ramp",
+      "file": "ramp.ico",
+      "page": "https://ramp.com/",
+      "asset": "https://ramp.com/favicon.ico?favicon.1drlcmj-8oww8.ico",
+      "sha256": "7a1cfe36a490c907981e16d044be910f938319786cea6746d354b555c2abaec8",
+      "bytes": 15406
+    },
+    "reddit": {
+      "company": "Reddit",
+      "file": "reddit.png",
+      "page": "https://www.reddit.com/",
+      "asset": "https://www.redditstatic.com/shreddit/assets/favicon/64x64.png",
+      "sha256": "f60ae5a33ee8d16c71a0ff6b45e3c2524f9ccaf3cd33e6636c6493dd4ec2d953",
+      "bytes": 3886
+    },
+    "safetyculture": {
+      "company": "SafetyCulture",
+      "file": "safetyculture.svg",
+      "page": "https://app.safetyculture.com/",
+      "asset": "https://app.safetyculture.com/static-assets/common/mitti-favicon.svg",
+      "sha256": "52662a114d413d0e36996ce528864e35ebce57b36f2ec836cd5db041cf66e894",
+      "bytes": 1531,
+      "note": "The existing SafetyCulture company ID is retained. Its official site and engineering RSS now identify the publisher as Mitti; this is the current mark served by its official application."
+    },
+    "salesforce": {
+      "company": "Salesforce",
+      "file": "salesforce.ico",
+      "page": "https://www.salesforce.com/",
+      "asset": "https://www.salesforce.com/c2/public/app/favicon.ico?bc=OTH",
+      "sha256": "92842fc6c2f66b46f69458c14621fc2eca5d6c02d7937f9124fe8a3a9a55bc91",
+      "bytes": 5430
+    },
+    "shopify": {
+      "company": "Shopify",
+      "file": "shopify.png",
+      "page": "https://www.shopify.com/",
+      "asset": "https://cdn.shopify.com/b/shopify-brochure2-assets/61cc781fe73f11e9d4bd160d27cc627b.png",
+      "sha256": "861d28bcbe8a917186e415206f4e0a733c3f4f6e5e313d7b3bb7f2ad5cc8c6b6",
+      "bytes": 2578
+    },
+    "slack": {
+      "company": "Slack",
+      "file": "slack.png",
+      "page": "https://slack.com/",
+      "asset": "https://a.slack-edge.com/9cc0056/img/icons/favicon-32.png",
+      "sha256": "ca3872d0fb85ff9858bcbdc529d6e1db32c029c681c6e723e4f2ecb1c7defea6",
+      "bytes": 702
+    },
+    "snowflake": {
+      "company": "Snowflake",
+      "file": "snowflake.png",
+      "page": "https://www.snowflake.com/",
+      "asset": "https://www.snowflake.com/etc.clientlibs/snowflake-site/clientlibs/clientlib-react/resources/favicon-96x96.png?v=3",
+      "sha256": "f8fef86d302f41615c5a4acfa5ad4125d69558db7dc4dcb8c50a5e23d90d5d11",
+      "bytes": 5775
+    },
+    "spotify": {
+      "company": "Spotify",
+      "file": "spotify.png",
+      "page": "https://www.spotify.com/",
+      "asset": "https://open.spotifycdn.com/cdn/images/favicon32.b64ecc03.png",
+      "sha256": "b64ecc030dcc47688f94d6c4b14d747f2b8dbcdc7012e5c69574f8354eac7257",
+      "bytes": 1129
+    },
+    "stripe": {
+      "company": "Stripe",
+      "file": "stripe.svg",
+      "page": "https://stripe.com/",
+      "asset": "https://images.stripeassets.com/fzn2n1nzq965/1hgcBNd12BfT9VLgbId7By/01d91920114b124fb4cf6d448f9f06eb/favicon.svg",
+      "sha256": "7253e3eb4657773723a696a1f4ad9c8f62794191b9f09c1359db74a51d2d3ae5",
+      "bytes": 412
+    },
+    "twilio": {
+      "company": "Twilio",
+      "file": "twilio.png",
+      "page": "https://www.twilio.com/",
+      "asset": "https://www.twilio.com/content/dam/twilio-com/core-assets/social/favicon-32x32.png",
+      "sha256": "24a3b2226314862cfc9345924df48b32ab30fb2e305f4d08501c3e563bbb1244",
+      "bytes": 1611
+    },
+    "uber": {
+      "company": "Uber",
+      "file": "uber.ico",
+      "page": "https://www.uber.com/",
+      "asset": "https://www.uber.com/favicon.ico",
+      "sha256": "7cb6d23120c81b92824829b8a760b982664b646f915d8ac4d2635e8c34becf96",
+      "bytes": 9662
+    }
+  }
+}

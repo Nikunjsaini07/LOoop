@@ -11,8 +11,8 @@ The current app is a functioning local prototype with an imported article databa
 | Original collector | `../data/blogs.sqlite3` |
 | Runtime database | Local Cloudflare D1, accessed as `env.DB` |
 | Local database persistence | `.wrangler/state/` (ignored by Git) |
-| Imported archive | 1,260 articles, 36 companies with articles, 37 configured sources |
-| Schema/migration | `db/schema.ts`, `drizzle/0000_glamorous_richard_fisk.sql` |
+| Imported archive | Grows through ingestion; 37 configured companies |
+| Schema/migrations | `db/schema.ts`, `drizzle/0000_glamorous_richard_fisk.sql`, `drizzle/0001_readzz_domain.sql` |
 | Current authentication | Sites-owned ChatGPT identity; development-only local mock |
 | Guest profile | Browser-local storage |
 | Signed-in profile | D1 `profiles` row keyed by verified account ID |
@@ -95,3 +95,13 @@ Official references checked on 19 October 2026:
 ## SQL domain upgrade
 
 Company/source/topic entities, keyword aliases, article-topic links, normalized user-history projections and server-ranked feed editions are implemented. Both local and remote databases have been migrated with backups and identity preservation checks. See [RECOMMENDATIONS.md](RECOMMENDATIONS.md) for current behavior and verification commands.
+
+## Remaining launch work
+
+- Deploy the public website with the remote `reads` D1 binding, production domain and HTTPS configuration. The ingestion Worker is already deployed; the website is still a local preview.
+- Integrate a standalone identity provider and verify account creation, sign-in/out, account isolation and profile persistence on the real deployment. Clerk was proposed; it has not been integrated.
+- Close ingestion coverage gaps: LinkedIn remains manual, and GitHub's feed currently fails from the cloud Worker. Keep source-health reporting honest until those adapters are repaired or replaced.
+- Configure error reporting, ingestion failure alerts, backup retention/restore checks, and a realistic load test. Tune recommendation weights with real reader feedback; the current engine is deterministic scoring, not a trained model.
+- Implement email delivery and opt-in/out flows if digests are wanted. The current cadence control stores a preference only.
+
+All 37 configured companies have locally hosted official publisher icons in the feed, article details, bookmarks/read logs and profile company lists. Asset origins and hashes are recorded in `public/company-logos/manifest.json`.

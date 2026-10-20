@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ArrowLeft, ArrowRight, ArrowUpRight, Bookmark, BookOpenCheck, Check, LoaderCircle } from "lucide-react";
 import { useReadingProfile } from "@/lib/useReadingProfile";
 import type { Article } from "@/lib/types";
+import CompanyLogo from "./CompanyLogo";
 
 const dateLabel = (value: string) => new Date(value).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 
@@ -29,7 +30,7 @@ export default function ArticleDetail({ article }: { article: Article }) {
       <a className="back-to-feed" href="/"><ArrowLeft size={13} /> Back to feed</a>
       <article>
         <header className="detail-heading">
-          <div className="detail-byline"><span>{article.company}</span><i aria-hidden="true" /><time dateTime={article.published_at || article.discovered_at}>{article.published_at ? "" : "Collected "}{dateLabel(article.published_at || article.discovered_at)}</time></div>
+          <div className="detail-byline"><span className="publisher-label"><CompanyLogo companyId={article.company_id} company={article.company} decorative />{article.company}</span><i aria-hidden="true" /><time dateTime={article.published_at || article.discovered_at}>{article.published_at ? "" : "Collected "}{dateLabel(article.published_at || article.discovered_at)}</time></div>
           <h1>{article.title}</h1>
           <div className="detail-tags">{article.topics.map((topic) => <span className="article-topic" key={topic}>{topic}</span>)}</div>
         </header>

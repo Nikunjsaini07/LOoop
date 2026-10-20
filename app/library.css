@@ -22,12 +22,11 @@
 .company-follow-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 20px; }
 .company-follow-button { display: flex; align-items: center; gap: 9px; min-width: 0; height: 40px; padding: 0 12px; border: 1px dashed #e5e5e5; border-radius: 10px; background: #f5f5f5; color: #737373; font: 12px/1 var(--sans); transition: background-color 150ms, border-color 150ms, color 150ms; }
 .company-follow-button img { display: block; width: 14px; height: 14px; object-fit: contain; flex-shrink: 0; }
-.company-follow-button > span:not(.company-follow-initial) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.company-follow-button > span:not(.company-logo) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .company-follow-button > svg { margin-left: auto; color: #aaa; }
 .company-follow-button.is-following { border: 1px solid #a3a3a3; background: #fff; color: #212121; }
 .company-follow-button.is-following > svg { color: #737373; }
 .company-follow-button:hover { border-color: #a3a3a3; background: #fff; color: #212121; }
-.company-follow-initial { display: grid; place-items: center; flex-shrink: 0; width: 14px; height: 14px; border-radius: 3px; background: #e5e5e5; font: 9px/1 var(--sans); color: #525252; }
 .profile-tray-footer { display: flex; align-items: center; justify-content: space-between; min-height: 36px; padding: 10px 12px 6px; font: 11px/1.4 var(--mono); color: #858585; }
 .profile-tray-footer button { display: inline-flex; align-items: center; gap: 5px; padding: 0; font: inherit; color: inherit; }
 .profile-tray-footer button:hover { color: #212121; }

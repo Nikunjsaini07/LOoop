@@ -1,9 +1,9 @@
 "use client";
 
 import { useId, useState, useSyncExternalStore } from "react";
-import Image from "next/image";
 import { BookOpenCheck, Bookmark, Check, ChevronDown, Pencil, Plus, SlidersHorizontal, X } from "lucide-react";
 import { TOPICS, type Article, type CustomFeed, type Profile, type Source } from "@/lib/types";
+import CompanyLogo from "./CompanyLogo";
 
 type Props = {
   topicOptions?: string[];
@@ -119,7 +119,6 @@ export default function ProfileView({ profile, articles, sources, onChange, onOp
     return (aIndex < 0 ? 100 : aIndex) - (bIndex < 0 ? 100 : bIndex) || a.company.localeCompare(b.company);
   });
   const visibleCompanies = showAllCompanies ? orderedSources : orderedSources.slice(0, 10);
-  const companyLogos = new Set(["stripe", "netflix", "cloudflare", "discord", "github", "spotify", "shopify", "airbnb", "uber"]);
   const selectedLabel = new Date(`${selectedDate}T12:00:00Z`).toLocaleDateString("en-GB", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
 
   return <section className="profile-view" aria-labelledby={`${id}-title`}>
@@ -144,9 +143,8 @@ export default function ProfileView({ profile, articles, sources, onChange, onOp
         <h2 id={`${id}-companies-title`}>Companies you follow</h2>
         <div className="company-follow-grid">{visibleCompanies.map((source) => {
           const following = profile.follows.includes(source.id);
-          const logo = source.company.toLowerCase();
           return <button key={source.id} type="button" className={`company-follow-button${following ? " is-following" : ""}`} aria-pressed={following} onClick={() => onChange({ follows: toggle(profile.follows, source.id) })}>
-            {companyLogos.has(logo) ? <Image src={`/reference/logos/${logo}.svg`} width={14} height={14} alt="" unoptimized /> : <span className="company-follow-initial" aria-hidden="true">{source.company[0]}</span>}
+            <CompanyLogo companyId={source.id} company={source.company} size={14} decorative />
             <span>{source.company}</span>{following ? <Check size={12} aria-hidden="true" /> : <Plus size={12} aria-hidden="true" />}
           </button>;
         })}</div>
@@ -190,15 +188,15 @@ export default function ProfileView({ profile, articles, sources, onChange, onOp
       <div role="tabpanel" id={`${id}-${tab}-panel`} aria-labelledby={`${id}-${tab}-tab`} className="library-panel" tabIndex={0}>
         {tab === "bookmarks" && <>
           {!profile.bookmarks.length && <div className="library-empty"><Bookmark size={24} strokeWidth={1.2} /><h3>Keep something worth returning to.</h3><p>Save an article from your feed. It will be waiting here.</p></div>}
-          {bookmarks.map((article) => <article className="library-article" key={article.id}><div><p className="article-byline">{article.company}</p><a className="library-article-title" href={`/articles/${encodeURIComponent(article.id)}`} onClick={(event) => { if (!event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey && event.button === 0) { event.preventDefault(); onOpen(article); } }}>{article.title}</a></div><button className="icon-button" onClick={() => onBookmark(article)} aria-label={`Remove ${article.title} from bookmarks`} title="Remove bookmark"><X size={16} /></button></article>)}
+          {bookmarks.map((article) => <article className="library-article" key={article.id}><div><p className="article-byline publisher-label"><CompanyLogo companyId={article.company_id} company={article.company} size={14} decorative />{article.company}</p><a className="library-article-title" href={`/articles/${encodeURIComponent(article.id)}`} onClick={(event) => { if (!event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey && event.button === 0) { event.preventDefault(); onOpen(article); } }}>{article.title}</a></div><button className="icon-button" onClick={() => onBookmark(article)} aria-label={`Remove ${article.title} from bookmarks`} title="Remove bookmark"><X size={16} /></button></article>)}
           {unavailableBookmarks > 0 && <p className="library-note">{unavailableBookmarks} saved {unavailableBookmarks === 1 ? "article is" : "articles are"} outside the currently loaded collection.</p>}
         </>}
         {tab === "read-log" && <>
           {!readLogs.length && <div className="library-empty"><BookOpenCheck size={24} strokeWidth={1.2} /><h3>Your reading, remembered.</h3><p>Mark an article as read from its page to keep it here.</p></div>}
-          {loggedArticles.map(({ article, readAt }) => <article className="library-article read-log-article" key={article.id}><div><p className="article-byline">{article.company}</p><a className="library-article-title" href={`/articles/${encodeURIComponent(article.id)}`} onClick={(event) => { if (!event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey && event.button === 0) { event.preventDefault(); onOpen(article); } }}>{article.title}</a><p className="read-log-date">Logged <time dateTime={readAt}>{loggedDate(readAt)}</time></p></div><button className="read-log-undo" onClick={() => onReadLog(article)} aria-label={`Remove read log for ${article.title}`}>Undo</button></article>)}
+          {loggedArticles.map(({ article, readAt }) => <article className="library-article read-log-article" key={article.id}><div><p className="article-byline publisher-label"><CompanyLogo companyId={article.company_id} company={article.company} size={14} decorative />{article.company}</p><a className="library-article-title" href={`/articles/${encodeURIComponent(article.id)}`} onClick={(event) => { if (!event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey && event.button === 0) { event.preventDefault(); onOpen(article); } }}>{article.title}</a><p className="read-log-date">Logged <time dateTime={readAt}>{loggedDate(readAt)}</time></p></div><button className="read-log-undo" onClick={() => onReadLog(article)} aria-label={`Remove read log for ${article.title}`}>Undo</button></article>)}
           {unavailableLogs > 0 && <p className="library-note">{unavailableLogs} logged {unavailableLogs === 1 ? "article is" : "articles are"} outside the currently loaded collection.</p>}
         </>}
-        {tab === "following" && <><p className="section-description">Choose the teams you want to hear from. These shape your Following feed.</p><label className="profile-source-search"><span className="sr-only">Find a company</span><input type="search" placeholder="Find a company…" value={sourceQuery} onChange={(event) => setSourceQuery(event.target.value)} /></label><div className="profile-source-list">{uniqueSources.filter((source) => source.company.toLowerCase().includes(sourceQuery.toLowerCase())).map((source) => <button key={source.id} className="profile-source" aria-pressed={profile.follows.includes(source.id)} onClick={() => onChange({ follows: toggle(profile.follows, source.id) })}><span>{source.company}</span><span className="profile-source-action">{profile.follows.includes(source.id) ? <><Check size={13} /> Following</> : "Follow"}</span></button>)}</div>{!uniqueSources.some((source) => source.company.toLowerCase().includes(sourceQuery.toLowerCase())) && <p className="library-note">No companies match “{sourceQuery}”.</p>}</>}
+        {tab === "following" && <><p className="section-description">Choose the teams you want to hear from. These shape your Following feed.</p><label className="profile-source-search"><span className="sr-only">Find a company</span><input type="search" placeholder="Find a company…" value={sourceQuery} onChange={(event) => setSourceQuery(event.target.value)} /></label><div className="profile-source-list">{uniqueSources.filter((source) => source.company.toLowerCase().includes(sourceQuery.toLowerCase())).map((source) => <button key={source.id} className="profile-source" aria-pressed={profile.follows.includes(source.id)} onClick={() => onChange({ follows: toggle(profile.follows, source.id) })}><span className="publisher-label"><CompanyLogo companyId={source.id} company={source.company} size={16} decorative />{source.company}</span><span className="profile-source-action">{profile.follows.includes(source.id) ? <><Check size={13} /> Following</> : "Follow"}</span></button>)}</div>{!uniqueSources.some((source) => source.company.toLowerCase().includes(sourceQuery.toLowerCase())) && <p className="library-note">No companies match “{sourceQuery}”.</p>}</>}
         {tab === "interests" && <><p className="section-description">A starting point for your recommendations. Change these whenever your curiosity moves.</p><div className="profile-interest-list">{topicOptions.map((topic) => <button key={topic} aria-pressed={profile.interests.includes(topic)} className={`profile-interest${profile.interests.includes(topic) ? " is-selected" : ""}`} onClick={() => onChange({ interests: toggle(profile.interests, topic) })}>{topic}{profile.interests.includes(topic) && <Check size={14} aria-hidden="true" />}</button>)}</div></>}
       </div>
     </div></section>

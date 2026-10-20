@@ -1,28 +1,27 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Image from "next/image";
 import { ArrowDown, ArrowRight, ArrowUpRight, Bookmark, Check, ChevronDown, LoaderCircle, Plus, Search, SlidersHorizontal } from "lucide-react";
 import ProfileView from "./ProfileView";
 import FeedDialog from "./FeedDialog";
 import { TOPICS, type Article, type ArticlePage, type CustomFeed } from "@/lib/types";
 import { useReadingProfile } from "@/lib/useReadingProfile";
 import { HOME_TOPICS } from "@/lib/topics";
+import CompanyLogo from "./CompanyLogo";
 
 type View = "home" | "trending" | "profile";
 const articleLabel = (article: Article) => `${article.published_at ? "" : "Collected "}${new Date(article.published_at || article.discovered_at).toLocaleDateString("en-GB", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}`;
 const mergeArticles = (first: Article[], next: Article[]) => [...new Map([...first, ...next].map((article) => [article.id, article])).values()];
-const companyLogos = ["stripe", "netflix", "cloudflare", "discord", "figma", "github", "spotify", "shopify", "airbnb", "uber"];
+const heroCompanies = [{ id: "stripe", name: "Stripe" }, { id: "netflix", name: "Netflix" }, { id: "cloudflare", name: "Cloudflare" }, { id: "discord", name: "Discord" }, { id: "figma", name: "Figma" }, { id: "github", name: "GitHub" }, { id: "spotify", name: "Spotify" }, { id: "shopify", name: "Shopify" }, { id: "airbnb", name: "Airbnb" }, { id: "uber", name: "Uber" }];
 
 const domain = (url: string) => { try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return "Original publisher"; } };
 
 function StoryCard({ article, rank, saved, ready, onSave, onTopic }: { article: Article; rank?: number; saved: boolean; ready: boolean; onSave: () => void; onTopic: (value: string) => void }) {
-  const logo = article.company.toLowerCase();
   return <article className="article-card tray">
     <div className="article-sheet sheet">
       <div className="article-topline">
         {rank !== undefined && <span className="article-rank">{rank}</span>}
-        <span className="company-icon">{companyLogos.includes(logo) ? <Image src={`/reference/logos/${logo}.svg`} alt={article.company} width={18} height={18} unoptimized /> : <span aria-label={article.company}>{article.company.charAt(0)}</span>}</span>
+        <span className="company-icon"><CompanyLogo companyId={article.company_id} company={article.company} /></span>
         <div className="article-byline"><span>{domain(article.url)}</span><time dateTime={article.published_at || article.discovered_at}>{articleLabel(article)}</time></div>
         <button className={`bookmark-button${saved ? " is-saved" : ""}`} disabled={!ready} aria-pressed={saved} aria-label={`${saved ? "Remove bookmark for" : "Bookmark"} ${article.title}`} onClick={onSave}><Bookmark size={16} strokeWidth={1.5} fill={saved ? "currentColor" : "none"} /></button>
       </div>
@@ -232,7 +231,7 @@ export default function BlogReader({ initial, initialView = "home" }: { initial:
             <p className="issue-pill"><span aria-hidden="true" />Daily edition · {issueDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" })}</p>
             <h1>Engineering,<br /><em>read slowly.</em></h1>
             <p className="hero-description">Engineering stories from the teams building the internet — short publisher excerpts, linked to the source.</p>
-            <div className="company-strip" aria-label="Writing from engineering teams">{companyLogos.map((logo) => <Image key={logo} src={`/reference/logos/${logo}.svg`} alt={logo.charAt(0).toUpperCase() + logo.slice(1)} width={18} height={18} unoptimized />)}</div>
+            <div className="company-strip" aria-label="Writing from engineering teams">{heroCompanies.map((company) => <CompanyLogo key={company.id} companyId={company.id} company={company.name} />)}</div>
           </section>
           <div className="search-tray tray"><label className="search-sheet sheet"><Search size={16} strokeWidth={1.6} aria-hidden="true" /><input ref={searchInput} type="search" placeholder={`Search ${initial.total.toLocaleString("en-US")} articles`} value={queryInput} onChange={(event) => setQueryInput(event.target.value)} aria-label="Search titles and abstracts" /><button className="search-shortcut" aria-label="Focus search, Command or Control K" onClick={() => searchInput.current?.focus()}><kbd>⌘K</kbd></button></label></div>
           <div className="signal-chips" aria-label="Filter by subject">{signals.map((value) => <button key={value} className={`signal-chip${signal === value ? " is-active" : ""}`} aria-pressed={signal === value} onClick={() => setSignal(value)}>{value}</button>)}</div>
