@@ -11,6 +11,9 @@ async function respond(request:Request,posted:boolean) {
   if(posted&&!isSameOrigin(request))return jsonError('This request must come from readzz',403);
   const query=new URL(request.url).searchParams;
   const pageSize=Number(query.get('pageSize')||24);
+  const pageNumber=Number(query.get('page')||1);
+  if(!Number.isInteger(pageNumber)||pageNumber<1||pageNumber>100000)return jsonError('Use a valid page number',400);
+  if(query.has('edition')&&!/^[\da-f-]{36}$/i.test(query.get('edition')||''))return jsonError('Invalid feed edition',400);
   if(!Number.isInteger(pageSize)||pageSize<1||pageSize>100)return jsonError('Use a pageSize from 1 to 100',400);
   if((query.get('q')||'').length>200||(query.get('company')||'').length>2000||(query.get('company')||'').split(',').length>100||(query.get('topic')||'').length>1000||(query.get('topic')||'').split(',').length>30||(query.get('signal')||'').length>80||(query.get('exclude')||'').length>2500||(query.get('exclude')||'').split(',').length>30||(query.get('ids')||'').length>41000||(query.get('ids')||'').split(',').length>500)return jsonError('Filter is too long',400);
   const requested=query.get('snapshot');
@@ -32,7 +35,7 @@ async function respond(request:Request,posted:boolean) {
       if(row)profile=sanitizeProfile(JSON.parse(row.data),profile,new Set(catalog.map(s=>s.id)));
     }
     const input=feedInput(query,profile,requested||new Date().toISOString());
-    const result=await queryFeed(db,input,catalog,{pageSize,cursor:query.get('cursor')==='0'?null:query.get('cursor'),owner:user?`account:${user.userId}`:'guest'});
+    const result=await queryFeed(db,input,catalog,{pageSize,page:pageNumber,edition:query.get('edition'),cursor:query.get('cursor')==='0'?null:query.get('cursor'),owner:user?`account:${user.userId}`:'guest'});
     waitUntil(refreshStaleSources().catch(()=>undefined));
     return Response.json(result,{headers:{'Cache-Control':'private, no-store','Vary':'Cookie'}});
   }catch(error){

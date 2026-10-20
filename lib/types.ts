@@ -68,6 +68,11 @@ export type ArticlePage = {
   rankingVersion?: number;
   contentVersion?: string;
   topicCatalog?: { id: string; name: string; parent_id: string | null }[];
+  page?: number;
+  pageSize?: number;
+  totalPages?: number;
+  edition?: string;
+  communitySummary?: { reads: number; saves: number; stories: number; companies: number };
 };
 
 export { TOPICS } from "./topics";

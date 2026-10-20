@@ -80,15 +80,16 @@ type Session = { id: string; owner_hash: string; request_hash: string; created_a
 
 export class FeedExpiredError extends Error {}
 
-export async function queryFeed(db: D1Database, input: FeedInput, sources: Source[], options: { pageSize: number; cursor?: string | null; owner: string; now?: number }): Promise<ArticlePage> {
+export async function queryFeed(db: D1Database, input: FeedInput, sources: Source[], options: { pageSize: number; cursor?: string | null; page?: number; edition?: string | null; owner: string; now?: number }): Promise<ArticlePage> {
   const now = options.now ?? Date.now();
   const { snapshot: _snapshot, ...preferences } = input;
   const ownerHash = await articleId(options.owner);
   const stableHash = await articleId(JSON.stringify(preferences));
   let session: Session | null = null;
-  let offset = 0;
-  if (options.cursor) {
-    const match = options.cursor.match(/^([\da-f-]{36}):(\d+)$/i);
+  let offset = ((options.page ?? 1) - 1) * options.pageSize;
+  const cursor = options.edition ? `${options.edition}:${offset}` : options.cursor;
+  if (cursor) {
+    const match = cursor.match(/^([\da-f-]{36}):(\d+)$/i);
     if (!match || Number(match[2]) > 10000000) throw new FeedExpiredError('Invalid feed cursor');
     offset = Number(match[2]);
     session = await db.prepare('SELECT * FROM feed_sessions WHERE id=? AND owner_hash=? AND request_hash LIKE ? AND expires_at>?').bind(match[1], ownerHash, `${stableHash}:%`, new Date(now).toISOString()).first<Session>();
@@ -115,15 +116,17 @@ export async function queryFeed(db: D1Database, input: FeedInput, sources: Sourc
     }
   }
   if (!session) throw new Error('Could not create feed edition');
+  const totalPages = Math.max(1, Math.ceil(session.total / options.pageSize));
+  if (offset >= session.total) offset = (totalPages - 1) * options.pageSize;
   const firstChunk = Math.floor(offset / 512);
   const lastChunk = Math.floor((offset + options.pageSize - 1) / 512);
   const chunks = (await db.prepare('SELECT chunk_index,ids FROM feed_chunks WHERE session_id=? AND chunk_index BETWEEN ? AND ? ORDER BY chunk_index').bind(session.id, firstChunk, lastChunk).all<{ chunk_index: number; ids: string }>()).results;
   const ids = chunks.flatMap(chunk => JSON.parse(chunk.ids) as string[]).slice(offset % 512, offset % 512 + options.pageSize);
   const rows = ids.length ? (await db.prepare(`SELECT a.*,COALESCE((SELECT json_group_array(t.name) FROM article_topics at JOIN topics t ON t.id=at.topic_id WHERE at.article_id=a.id),'[]') AS normalized_topics,
     (SELECT t.name FROM article_topics at JOIN topics t ON t.id=at.topic_id WHERE at.article_id=a.id AND EXISTS(SELECT 1 FROM article_topics old JOIN json_each(?) log ON old.article_id=json_extract(log.value,'$.articleId') WHERE old.topic_id=at.topic_id) LIMIT 1) AS related_topic,
-    (SELECT COUNT(*) FROM engagements e WHERE e.article_id=a.id AND e.kind='read' AND e.active=1 AND e.occurred_at<=?) AS logged_reads,
-    (SELECT COUNT(*) FROM engagements e WHERE e.article_id=a.id AND e.kind='save' AND e.active=1 AND e.occurred_at<=?) AS saved_count
-    FROM articles a WHERE a.id IN (SELECT value FROM json_each(?))`).bind(JSON.stringify(input.readLogs),session.created_at, session.created_at, JSON.stringify(ids)).all<Record<string, unknown>>()).results : [];
+    (SELECT COUNT(*) FROM engagements e WHERE e.article_id=a.id AND e.kind='read' AND e.active=1) AS logged_reads,
+    (SELECT COUNT(*) FROM engagements e WHERE e.article_id=a.id AND e.kind='save' AND e.active=1) AS saved_count
+    FROM articles a WHERE a.id IN (SELECT value FROM json_each(?))`).bind(JSON.stringify(input.readLogs), JSON.stringify(ids)).all<Record<string, unknown>>()).results : [];
   const byId = new Map(rows.map(row => [String(row.id), row]));
   const articles = ids.flatMap(id => {
     const row = byId.get(id); if (!row) return [];
@@ -133,5 +136,7 @@ export async function queryFeed(db: D1Database, input: FeedInput, sources: Sourc
   });
   const next = offset + ids.length;
   const topicCatalog=(await db.prepare('SELECT id,name,parent_id FROM topics ORDER BY parent_id IS NOT NULL,name').all<{id:string;name:string;parent_id:string|null}>()).results;
-  return { articles, sources, total: session.total, hasMore: next < session.total, nextCursor: next < session.total ? `${session.id}:${next}` : null, snapshot: session.created_at, updatedAt: session.created_at, rankingBasis: session.basis, rankingVersion: 2,contentVersion:session.request_hash.match(/content_revision=(\d+)/)?.[1]??'0',topicCatalog };
+  const cutoff = new Date(now - (input.period === 'today' ? 1 : input.period === 'week' ? 7 : 1000000) * 86400000).toISOString();
+  const communitySummary = input.mode === 'trending' ? await db.prepare(`SELECT COALESCE(SUM(e.kind='read'),0) AS reads,COALESCE(SUM(e.kind='save'),0) AS saves,COUNT(DISTINCT e.article_id) AS stories,COUNT(DISTINCT a.company_id) AS companies FROM engagements e JOIN articles a ON a.id=e.article_id WHERE e.active=1 AND e.occurred_at>=? AND e.occurred_at<=?`).bind(cutoff,new Date(now).toISOString()).first<{reads:number;saves:number;stories:number;companies:number}>() : null;
+  return { articles, sources, total: session.total, hasMore: next < session.total, nextCursor: next < session.total ? `${session.id}:${next}` : null, snapshot: session.created_at, updatedAt: session.created_at, rankingBasis: session.basis, rankingVersion: 2,contentVersion:session.request_hash.match(/content_revision=(\d+)/)?.[1]??'0',topicCatalog,page:Math.floor(offset/options.pageSize)+1,pageSize:options.pageSize,totalPages,edition:session.id,...(communitySummary?{communitySummary}:{}) };
 }
