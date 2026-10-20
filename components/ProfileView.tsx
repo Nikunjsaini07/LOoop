@@ -6,6 +6,7 @@ import { BookOpenCheck, Bookmark, Check, ChevronDown, Pencil, Plus, SlidersHoriz
 import { TOPICS, type Article, type CustomFeed, type Profile, type Source } from "@/lib/types";
 
 type Props = {
+  topicOptions?: string[];
   profile: Profile;
   articles: Article[];
   sources: Source[];
@@ -86,7 +87,7 @@ function setDigestCadence(cadence: DigestCadence) {
   window.dispatchEvent(new Event("longreads-digest-change"));
 }
 
-export default function ProfileView({ profile, articles, sources, onChange, onOpen, onBookmark, onReadLog, onCustomize, onEditFeed, storageLabel }: Props) {
+export default function ProfileView({ profile, articles, sources, onChange, onOpen, onBookmark, onReadLog, onCustomize, onEditFeed, storageLabel, topicOptions=TOPICS }: Props) {
   const id = useId();
   const tab = useSyncExternalStore(subscribeLibraryTab, getLibraryTab, () => "bookmarks" as const);
   const [editing, setEditing] = useState(false);
@@ -198,7 +199,7 @@ export default function ProfileView({ profile, articles, sources, onChange, onOp
           {unavailableLogs > 0 && <p className="library-note">{unavailableLogs} logged {unavailableLogs === 1 ? "article is" : "articles are"} outside the currently loaded collection.</p>}
         </>}
         {tab === "following" && <><p className="section-description">Choose the teams you want to hear from. These shape your Following feed.</p><label className="profile-source-search"><span className="sr-only">Find a company</span><input type="search" placeholder="Find a company…" value={sourceQuery} onChange={(event) => setSourceQuery(event.target.value)} /></label><div className="profile-source-list">{uniqueSources.filter((source) => source.company.toLowerCase().includes(sourceQuery.toLowerCase())).map((source) => <button key={source.id} className="profile-source" aria-pressed={profile.follows.includes(source.id)} onClick={() => onChange({ follows: toggle(profile.follows, source.id) })}><span>{source.company}</span><span className="profile-source-action">{profile.follows.includes(source.id) ? <><Check size={13} /> Following</> : "Follow"}</span></button>)}</div>{!uniqueSources.some((source) => source.company.toLowerCase().includes(sourceQuery.toLowerCase())) && <p className="library-note">No companies match “{sourceQuery}”.</p>}</>}
-        {tab === "interests" && <><p className="section-description">A starting point for your recommendations. Change these whenever your curiosity moves.</p><div className="profile-interest-list">{TOPICS.map((topic) => <button key={topic} aria-pressed={profile.interests.includes(topic)} className={`profile-interest${profile.interests.includes(topic) ? " is-selected" : ""}`} onClick={() => onChange({ interests: toggle(profile.interests, topic) })}>{topic}{profile.interests.includes(topic) && <Check size={14} aria-hidden="true" />}</button>)}</div></>}
+        {tab === "interests" && <><p className="section-description">A starting point for your recommendations. Change these whenever your curiosity moves.</p><div className="profile-interest-list">{topicOptions.map((topic) => <button key={topic} aria-pressed={profile.interests.includes(topic)} className={`profile-interest${profile.interests.includes(topic) ? " is-selected" : ""}`} onClick={() => onChange({ interests: toggle(profile.interests, topic) })}>{topic}{profile.interests.includes(topic) && <Check size={14} aria-hidden="true" />}</button>)}</div></>}
       </div>
     </div></section>
 

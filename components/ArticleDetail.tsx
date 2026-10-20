@@ -8,7 +8,7 @@ import type { Article } from "@/lib/types";
 const dateLabel = (value: string) => new Date(value).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 
 export default function ArticleDetail({ article }: { article: Article }) {
-  const { profile, ready, storageLabel, syncStatus, recordOpen, toggleBookmark, toggleReadLog } = useReadingProfile();
+  const { profile, ready, storageLabel, syncStatus, communityStatus, accountVerified, recordOpen, toggleBookmark, toggleReadLog } = useReadingProfile();
   const [message, setMessage] = useState("");
   const saved = profile.bookmarks.includes(article.id);
   const readLog = profile.readLogs.find((log) => log.articleId === article.id);
@@ -43,8 +43,10 @@ export default function ArticleDetail({ article }: { article: Article }) {
           <div className="detail-log-footer"><span>{readLog ? "Click again to undo." : "Only you decide when it’s read."}</span><a href="/profile?tab=read-log">View reading log <ArrowRight size={11} /></a></div>
         </section>
         {message && <p className="detail-message" role="alert">{message}</p>}
+        {communityStatus === "error" && <p className="detail-message" role="status">Your personal log is saved. Community activity could not be synced.</p>}
         <div className="detail-secondary-actions"><button className="text-button" disabled={!ready} aria-pressed={saved} onClick={() => toggleBookmark(article)}><Bookmark size={14} fill={saved ? "currentColor" : "none"} />{saved ? "Bookmarked" : "Save for later"}</button><span className="detail-storage" role="status">{ready ? storageLabel : "Opening your reading profile…"}</span></div>
         {ready && syncStatus === "local" && <p className="detail-sync-link"><a href={`/signin-with-chatgpt?return_to=${encodeURIComponent(`/articles/${article.id}`)}`} target="_top">Sign in to sync across devices <ArrowUpRight size={11} /></a></p>}
+        {ready && accountVerified && <p className="detail-sync-link">Signed-in read logs and saves help rank community trends.</p>}
       </article>
       <footer className="paper-footer"><span>A little reading, every day.</span><span>Stories stay with their publishers.</span></footer>
     </main>

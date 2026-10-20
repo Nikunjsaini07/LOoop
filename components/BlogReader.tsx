@@ -7,13 +7,13 @@ import ProfileView from "./ProfileView";
 import FeedDialog from "./FeedDialog";
 import { TOPICS, type Article, type ArticlePage, type CustomFeed } from "@/lib/types";
 import { useReadingProfile } from "@/lib/useReadingProfile";
-import { articleDate, rankArticles } from "@/lib/recommendations";
+import { HOME_TOPICS } from "@/lib/topics";
 
 type View = "home" | "trending" | "profile";
 const articleLabel = (article: Article) => `${article.published_at ? "" : "Collected "}${new Date(article.published_at || article.discovered_at).toLocaleDateString("en-GB", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}`;
 const mergeArticles = (first: Article[], next: Article[]) => [...new Map([...first, ...next].map((article) => [article.id, article])).values()];
 const companyLogos = ["stripe", "netflix", "cloudflare", "discord", "figma", "github", "spotify", "shopify", "airbnb", "uber"];
-const signals = ["All", "Rust", "Data", "Scale", "Reliability", "Realtime", "Networking"];
+
 const domain = (url: string) => { try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return "Original publisher"; } };
 
 function StoryCard({ article, rank, saved, ready, onSave, onTopic }: { article: Article; rank?: number; saved: boolean; ready: boolean; onSave: () => void; onTopic: (value: string) => void }) {
@@ -28,16 +28,18 @@ function StoryCard({ article, rank, saved, ready, onSave, onTopic }: { article: 
       </div>
       <h2><a href={`/articles/${encodeURIComponent(article.id)}`}>{article.title}</a></h2>
       {article.summary && <p className="article-abstract">{article.summary.length > 240 ? `${article.summary.slice(0, 237).replace(/\s+\S*$/, "")}…` : article.summary}</p>}
+      {article.recommendationReason && rank === undefined && <p className="story-reason">{article.recommendationReason}</p>}
+      {rank !== undefined && article.engagement && article.engagement.reads + article.engagement.saves > 0 && <p className="story-reason">{article.engagement.reads} read logs · {article.engagement.saves} saves</p>}
     </div>
     <div className="article-footer"><div className="article-topics">{article.topics.slice(0, 2).map((value) => <button className="article-topic" key={value} onClick={() => onTopic(value)}>{value}</button>)}</div><a className="original-link" href={`/articles/${encodeURIComponent(article.id)}`}>Read <ArrowRight size={13} /></a></div>
   </article>;
 }
 
 export default function BlogReader({ initial, initialView = "home" }: { initial: ArticlePage; initialView?: View }) {
-  const { profile, ready, storageLabel, syncStatus, updateProfile, toggleBookmark, toggleReadLog } = useReadingProfile();
+  const { profile, ready, profileOwner, storageLabel, syncStatus, updateProfile, toggleBookmark, toggleReadLog } = useReadingProfile();
   const [view, setView] = useState<View>(initialView);
   const [feed, setFeed] = useState("personal");
-  const [ordered, setOrdered] = useState(() => rankArticles(initialView === "trending" ? initial.articles.filter((article) => articleDate(article) >= Date.parse(initial.snapshot) - 7 * 86400000) : initial.articles, profile, initialView === "trending" ? "trending" : "personal", Date.parse(initial.snapshot), initial.articles));
+  const [ordered, setOrdered] = useState(initial.articles);
   const [known, setKnown] = useState(initial.articles);
   const [page, setPage] = useState(initial);
   const [visible, setVisible] = useState(12);
@@ -61,7 +63,9 @@ export default function BlogReader({ initial, initialView = "home" }: { initial:
   const requestController = useRef<AbortController | null>(null);
   const failedRequest = useRef<"edition" | "page" | null>(null);
   const customFeed = profile.customFeeds.find((item) => item.id === feed);
-  const sources = initial.sources;
+  const sources = page.sources;
+  const topicOptions = page.topicCatalog?.map(topic=>topic.name) ?? TOPICS;
+  const signals = ["All",...HOME_TOPICS.filter(topic=>topicOptions.includes(topic)),...topicOptions.filter(topic=>!HOME_TOPICS.includes(topic))];
 
   useEffect(() => {
     const readLocation = () => { const requested = window.location.pathname.slice(1) || new URLSearchParams(window.location.search).get("view"); setView(requested === "profile" || requested === "trending" ? requested : "home"); };
@@ -83,7 +87,7 @@ export default function BlogReader({ initial, initialView = "home" }: { initial:
   }, [view]);
 
   const paramsString = useMemo(() => {
-    const params = new URLSearchParams({ pageSize: "100" });
+    const params = new URLSearchParams({ pageSize: "24", mode: view === "trending" ? "trending" : feed === "latest" || feed === "following" ? feed : "personal", period });
     let companies = view === "trending" ? [] : customFeed?.companies ?? (feed === "following" ? profile.follows : []);
     let topics = view === "trending" ? [] : customFeed?.topics ?? [];
     if (company) companies = companies.length ? companies.filter((id) => id === company) : [company];
@@ -96,24 +100,16 @@ export default function BlogReader({ initial, initialView = "home" }: { initial:
     if (view === "home" && signal !== "All") params.set("signal", signal);
     if (view !== "trending" && customFeed?.exclude.length) params.set("exclude", customFeed.exclude.join(","));
     return params.toString();
-  }, [customFeed, profile.follows, feed, company, topic, query, view, signal]);
+  }, [customFeed, profile.follows, feed, company, topic, query, view, signal, period]);
   const interestsKey = profile.interests.join("|");
   const followsKey = profile.follows.join("|");
-  const requestKey = `${view}|${feed}|${paramsString}|${period}|${interestsKey}|${followsKey}|${ready}|${reload}`;
+  const historyKey = `${profile.readLogs.map(log => `${log.articleId}:${log.readAt}`).join("|")}|${profile.bookmarks.join("|")}|${profile.activity.map(day=>`${day.date}:${day.count}`).join("|")}`;
+  const requestKey = `${view}|${feed}|${paramsString}|${period}|${interestsKey}|${followsKey}|${historyKey}|${profileOwner}|${ready}|${reload}`;
+  const feedOptions = () => ({method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({owner:profileOwner,profile:{follows:profile.follows,interests:profile.interests,bookmarks:profile.bookmarks,readLogs:profile.readLogs,activity:profile.activity}}),credentials:"same-origin" as const});
 
-  function arrange(articles: Article[]) {
-    const eligible = view === "trending" && period !== "archive" ? articles.filter((article) => articleDate(article) >= Date.now() - (period === "today" ? 1 : 7) * 86400000) : articles;
-    return view === "trending" ? rankArticles(eligible, profile, "trending") : feed === "latest" || feed === "following" ? eligible : rankArticles(eligible, profile, "personal", Date.now(), known);
-  }
-
-  function withPeriodLimit(result: ArticlePage) {
-    const oldest = result.articles.at(-1);
-    const cutoff = Date.now() - (period === "today" ? 1 : 7) * 86400000;
-    return view === "trending" && period !== "archive" && oldest && articleDate(oldest) < cutoff ? { ...result, hasMore: false, nextCursor: null } : result;
-  }
 
   useEffect(() => {
-    if (view === "profile") return;
+    if (view === "profile" || !ready) return;
     const current = ++generation.current;
     requestController.current?.abort();
     const controller = new AbortController();
@@ -124,24 +120,24 @@ export default function BlogReader({ initial, initialView = "home" }: { initial:
     setLoading(true);
     setError("");
     failedRequest.current = null;
-    void fetch(`/api/articles?${paramsString}`, { signal: controller.signal, cache: "no-store" }).then(async (response) => {
+    void fetch(`/api/articles?${paramsString}`, { ...feedOptions(), signal: controller.signal, cache: "no-store" }).then(async (response) => {
       if (!response.ok) throw new Error("The archive could not be loaded. Your place is safe; try again.");
       return await response.json() as ArticlePage;
     }).then((result) => {
       if (current !== generation.current) return;
-      setPage(withPeriodLimit(result));
-      setOrdered(arrange(result.articles));
+      setPage(result);
+      setOrdered(result.articles);
       setKnown((previous) => mergeArticles(previous, result.articles));
       setVisible(12);
       setNewPosts(false);
     }).catch((reason: Error) => { if (reason.name !== "AbortError" && current === generation.current) { failedRequest.current = "edition"; setError(reason.message); } }).finally(() => { if (current === generation.current) { busy.current = false; setLoading(false); } });
     return () => controller.abort();
-    // Profile interaction events preserve the current order; only explicit preferences reset an edition.
+    // A new reading history creates a new server-ranked edition; cursor pages remain frozen.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requestKey]);
 
   const loadMore = useCallback(async () => {
-    if (busy.current || view === "profile") return;
+    if (busy.current || view === "profile" || !ready) return;
     if (visible < ordered.length) { setVisible((count) => count + 12); return; }
     if (!page.hasMore || !page.nextCursor) return;
     busy.current = true;
@@ -155,19 +151,20 @@ export default function BlogReader({ initial, initialView = "home" }: { initial:
     params.set("cursor", page.nextCursor);
     params.set("snapshot", page.snapshot);
     try {
-      const response = await fetch(`/api/articles?${params}`, { signal: controller.signal, cache: "no-store" });
+      const response = await fetch(`/api/articles?${params}`, { ...feedOptions(), signal: controller.signal, cache: "no-store" });
+      if (response.status === 409) { setReload(value=>value+1); return; }
       if (!response.ok) throw new Error("The next stories are taking a moment. Try again.");
       const result = await response.json() as ArticlePage;
       if (current !== generation.current) return;
-      setPage(withPeriodLimit(result));
-      setOrdered((previous) => mergeArticles(previous, arrange(result.articles)));
+      setPage(result);
+      setOrdered((previous) => mergeArticles(previous, result.articles));
       setKnown((previous) => mergeArticles(previous, result.articles));
       setVisible((count) => count + 12);
     } catch (reason) { if (reason instanceof Error && reason.name !== "AbortError" && current === generation.current) { failedRequest.current = "page"; setError(reason.message); } }
     finally { if (current === generation.current) { busy.current = false; setLoading(false); } }
     // Keep existing entries in place when a new batch arrives.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible, ordered.length, page, paramsString, view, feed, period, interestsKey, followsKey]);
+  }, [visible, ordered.length, page, paramsString, view, feed, period, interestsKey, followsKey, historyKey,ready,profileOwner]);
 
   useEffect(() => {
     const element = sentinel.current;
@@ -191,9 +188,9 @@ export default function BlogReader({ initial, initialView = "home" }: { initial:
 
   useEffect(() => {
     const controller = new AbortController();
-    const timer = window.setInterval(() => { void fetch("/api/articles?pageSize=1", { signal: controller.signal, cache: "no-store" }).then(async (response) => response.ok ? await response.json() as ArticlePage : null).then((result) => { if (result && result.updatedAt !== page.updatedAt) setNewPosts(true); }).catch(() => undefined); }, 300000);
+    const timer = window.setInterval(() => { void fetch("/api/articles?pageSize=1", { signal: controller.signal, cache: "no-store" }).then(async (response) => response.ok ? await response.json() as ArticlePage : null).then((result) => { if (result && result.contentVersion !== page.contentVersion) setNewPosts(true); }).catch(() => undefined); }, 300000);
     return () => { window.clearInterval(timer); controller.abort(); };
-  }, [page.updatedAt]);
+  }, [page.contentVersion]);
 
   const navigate = (next: View) => {
     if (next === "trending") clearFilters();
@@ -214,7 +211,7 @@ export default function BlogReader({ initial, initialView = "home" }: { initial:
   const hasMore = visible < ordered.length || page.hasMore;
 
   const stories = ordered.slice(0, visible);
-  const featured = view === "home" ? ordered.find((article) => companyLogos.includes(article.company.toLowerCase()) && article.summary.length > 80 && article.title.length < 110) || stories[0] : null;
+  const featured = view === "home" ? stories[0] ?? null : null;
   const remaining = featured ? stories.filter((article) => article.id !== featured.id) : stories;
   const renderStory = (article: Article, index?: number) => <StoryCard key={article.id} article={article} rank={index} ready={ready} saved={profile.bookmarks.includes(article.id)} onSave={() => toggleBookmark(article)} onTopic={(value) => { setTopic(value); setSearchOpen(true); if (view !== "home") navigate("home"); }} />;
 
@@ -226,7 +223,7 @@ export default function BlogReader({ initial, initialView = "home" }: { initial:
     </header>
     <main className="reading-main" id="reading-surface">
       {view === "profile" ? <>
-        <ProfileView profile={profile} articles={known} sources={sources} onChange={(patch) => { if (ready) updateProfile(patch); }} onOpen={openArticle} onBookmark={toggleBookmark} onReadLog={toggleReadLog} onCustomize={() => customize()} onEditFeed={(edition) => customize(edition)} storageLabel={storageLabel} />
+        <ProfileView topicOptions={topicOptions} profile={profile} articles={known} sources={sources} onChange={(patch) => { if (ready) updateProfile(patch); }} onOpen={openArticle} onBookmark={toggleBookmark} onReadLog={toggleReadLog} onCustomize={() => customize()} onEditFeed={(edition) => customize(edition)} storageLabel={storageLabel} />
         {!ready && <p className="feed-status"><LoaderCircle size={15} className="spinning" /> Opening your profile…</p>}
         {ready && syncStatus === "local" && <p className="profile-account-link"><a href="/signin-with-chatgpt?return_to=%2Fprofile" target="_top">Sign in to sync your reading across devices <ArrowUpRight size={12} /></a></p>}
       </> : <>
@@ -234,17 +231,17 @@ export default function BlogReader({ initial, initialView = "home" }: { initial:
           <section className="home-hero">
             <p className="issue-pill"><span aria-hidden="true" />Daily edition · {issueDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" })}</p>
             <h1>Engineering,<br /><em>read slowly.</em></h1>
-            <p className="hero-description">The week’s best writing from the teams building the internet — summarised in two sentences, linked to the source.</p>
+            <p className="hero-description">Engineering stories from the teams building the internet — short publisher excerpts, linked to the source.</p>
             <div className="company-strip" aria-label="Writing from engineering teams">{companyLogos.map((logo) => <Image key={logo} src={`/reference/logos/${logo}.svg`} alt={logo.charAt(0).toUpperCase() + logo.slice(1)} width={18} height={18} unoptimized />)}</div>
           </section>
           <div className="search-tray tray"><label className="search-sheet sheet"><Search size={16} strokeWidth={1.6} aria-hidden="true" /><input ref={searchInput} type="search" placeholder={`Search ${initial.total.toLocaleString("en-US")} articles`} value={queryInput} onChange={(event) => setQueryInput(event.target.value)} aria-label="Search titles and abstracts" /><button className="search-shortcut" aria-label="Focus search, Command or Control K" onClick={() => searchInput.current?.focus()}><kbd>⌘K</kbd></button></label></div>
           <div className="signal-chips" aria-label="Filter by subject">{signals.map((value) => <button key={value} className={`signal-chip${signal === value ? " is-active" : ""}`} aria-pressed={signal === value} onClick={() => setSignal(value)}>{value}</button>)}</div>
           {(feed !== "personal" || company || topic) && <div className="active-filter-note"><span>{customFeed?.name || (feed === "following" ? "Following" : feed === "latest" ? "Latest" : "For you")}{company ? ` · ${sources.find((item) => item.id === company)?.company}` : ""}{topic ? ` · ${topic}` : ""}</span><button onClick={() => setSearchOpen(!searchOpen)}>Edit filters</button></div>}
-          {searchOpen && <div className="feed-filter-panel"><div className="feed-filter-row"><label><span className="sr-only">Company</span><select value={company} onChange={(event) => setCompany(event.target.value)}><option value="">All companies</option>{sources.map((source) => <option value={source.id} key={source.id}>{source.company}</option>)}</select></label><label><span className="sr-only">Topic</span><select value={topic} onChange={(event) => setTopic(event.target.value)}><option value="">All topics</option>{TOPICS.map((value) => <option key={value}>{value}</option>)}</select></label><button className="text-button" onClick={() => { clearFilters(); setSearchOpen(false); }}>Clear</button></div>{customFeed && <p className="filter-note">Searching within “{customFeed.name}”. Your feed’s rules still apply.</p>}</div>}
-        </> : <header className="trending-heading"><p className="eyebrow">{period === "archive" ? "From the archive" : period === "today" ? "Last 24 hours" : "Last 7 days"}</p><h1>What everyone’s <em>reading</em></h1><label className="trending-period"><span className="sr-only">Trending time period</span><select value={period} onChange={(event) => setPeriod(event.target.value)}><option value="week">Last 7 days</option><option value="today">Last 24 hours</option><option value="archive">All collected stories</option></select><ChevronDown size={12} /></label></header>}
+          {searchOpen && <div className="feed-filter-panel"><div className="feed-filter-row"><label><span className="sr-only">Company</span><select value={company} onChange={(event) => setCompany(event.target.value)}><option value="">All companies</option>{sources.map((source) => <option value={source.id} key={source.id}>{source.company}</option>)}</select></label><label><span className="sr-only">Topic</span><select value={topic} onChange={(event) => setTopic(event.target.value)}><option value="">All topics</option>{topicOptions.map((value) => <option key={value}>{value}</option>)}</select></label><button className="text-button" onClick={() => { clearFilters(); setSearchOpen(false); }}>Clear</button></div>{customFeed && <p className="filter-note">Searching within “{customFeed.name}”. Your feed’s rules still apply.</p>}</div>}
+        </> : <header className="trending-heading"><p className="eyebrow">{period === "archive" ? "From the archive" : period === "today" ? "Last 24 hours" : "Last 7 days"}</p><h1>{page.rankingBasis === "engagement" ? <>What readers <em>recommend</em></> : <>Fresh ideas to <em>explore</em></>}</h1><label className="trending-period"><span className="sr-only">Trending time period</span><select value={period} onChange={(event) => setPeriod(event.target.value)}><option value="week">Last 7 days</option><option value="today">Last 24 hours</option><option value="archive">All collected stories</option></select><ChevronDown size={12} /></label></header>}
         {newPosts && <button className="new-posts-button" onClick={() => setReload((value) => value + 1)}><ArrowDown size={14} /> New stories are ready. Refresh your feed.</button>}
         <div aria-busy={loading}>
-          {featured && <section className="featured-section"><div className="section-rule"><span>{query || signal !== "All" || activeFilters ? "Selected for you" : "Editor’s pick"}</span><i /><time dateTime={page.snapshot}>Today</time></div>{renderStory(featured)}</section>}
+          {featured && <section className="featured-section"><div className="section-rule"><span>{feed === "latest" || feed === "following" ? "Latest stories" : "Selected for you"}</span><i /><time dateTime={page.snapshot}>Today</time></div>{renderStory(featured)}</section>}
           {remaining.length > 0 && <section className="stories-section">{view === "home" && <div className="section-rule"><span>{query || signal !== "All" || activeFilters ? "In your feed" : "This week"}</span><i /><span>{Math.min(remaining.length, 7)} pieces</span></div>}<div className="article-list">{(view === "home" ? remaining.slice(0, 7) : remaining).map((article, index) => renderStory(article, view === "trending" ? index + 1 : undefined))}</div></section>}
         </div>
         {view === "home" && <section className="customize-panel"><h2>Make it yours.</h2><p>Follow companies and topics for a personal feed.</p><button className="ink-button" disabled={!ready} onClick={() => customize(customFeed ?? null)}><Plus size={14} /> Customise feed</button>{(profile.customFeeds.length > 0 || profile.follows.length > 0) && <div className="personal-feed-controls"><label className="edition-select"><span className="sr-only">Choose your feed</span><select value={feed} onChange={(event) => { clearFilters(); setFeed(event.target.value); }}><option value="personal">For you</option><option value="latest">Latest</option><option value="following">Following</option>{profile.customFeeds.map((edition) => <option key={edition.id} value={edition.id}>{edition.name}</option>)}</select><ChevronDown size={12} /></label><button className="text-button" aria-expanded={searchOpen} onClick={() => { setSearchOpen(!searchOpen); window.scrollTo({ top: 470, behavior: "smooth" }); }}><SlidersHorizontal size={12} /> Filters</button></div>}</section>}
@@ -255,10 +252,10 @@ export default function BlogReader({ initial, initialView = "home" }: { initial:
         {loading && <p className="feed-status" role="status"><LoaderCircle size={15} className="spinning" /> Gathering stories…</p>}
         {!loading && hasMore && !error && <button className="load-more-button" onClick={() => void loadMore()}>More stories <ArrowDown size={14} /></button>}
         {!loading && !hasMore && !!ordered.length && <div className="caught-up"><Check size={16} /><p>You’re all caught up.</p><span>More stories arrive as the companies publish.</span></div>}
-        {view === "trending" && <p className="ranking-note">Ranked by freshness, topic coverage, and source variety.</p>}
+        {view === "trending" && <p className="ranking-note">{page.rankingBasis === "engagement" ? "Ranked by recent, unique reader logs and saves. Repeat clicks don’t add votes." : "Community trends are warming up. These are fresh stories until readers start logging and saving."}</p>}
       </>}
       <footer className="paper-footer"><span>Collected from {sources.length} companies</span><span>Links go to original publisher</span></footer>
     </main>
-    <FeedDialog open={dialogOpen} onClose={() => setDialogOpen(false)} profile={profile} sources={sources} onSave={saveFeed} onPreferences={updateProfile} editingFeed={editingFeed} onDelete={(id) => { updateProfile({ customFeeds: profile.customFeeds.filter((edition) => edition.id !== id) }); if (feed === id) setFeed("personal"); }} />
+    <FeedDialog topicOptions={topicOptions} open={dialogOpen} onClose={() => setDialogOpen(false)} profile={profile} sources={sources} onSave={saveFeed} onPreferences={updateProfile} editingFeed={editingFeed} onDelete={(id) => { updateProfile({ customFeeds: profile.customFeeds.filter((edition) => edition.id !== id) }); if (feed === id) setFeed("personal"); }} />
   </div>;
 }

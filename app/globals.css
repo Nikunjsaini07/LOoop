@@ -16,3 +16,5 @@ body:has(.view-article) .site-sky{opacity:.4}
 @media(max-width:650px){.home-hero h1{font-size:52px}.home-hero{padding-top:80px}.trending-heading h1{font-size:36px;max-width:330px}.trending-period{top:34px}.trending-heading{padding-top:46px;padding-bottom:36px}.article-card h2{font-size:22px}.paper-footer{font-size:9px;gap:16px}.reading-main .profile-view{padding-top:60px}}
 @media(max-width:360px){.site-header,.reading-main{padding-inline:16px}.site-header{gap:8px}.wordmark{font-size:18px;gap:6px}.main-nav{gap:0}.nav-item{padding-inline:9px;font-size:12px}.home-hero h1{font-size:46px}.signal-chips{margin-inline:-16px;padding-inline:16px}.article-sheet{padding:18px}.article-abstract{font-size:13px}.article-byline{font-size:10px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}.continued-stories{margin-top:48px}.search-sheet{gap:6px}.search-sheet>svg{width:12px;height:12px}.brand-mark{font-size:22px;box-shadow:inset 0 1px 0 #ffffff40,0 1px 2px #0000001a}
+
+.story-reason{margin-top:12px;color:var(--muted);font:10px/1.6 var(--mono)}

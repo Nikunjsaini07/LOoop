@@ -46,6 +46,8 @@ export function useReadingProfile() {
   const remote = useRef(false);
   const scheduleSave = useRef<() => void>(() => undefined);
   const persistCopy = useRef<() => void>(() => undefined);
+  const communityQueue = useRef<Promise<unknown>>(Promise.resolve());
+  const [communityStatus, setCommunityStatus] = useState<"idle" | "synced" | "error">("idle");
 
   useEffect(() => {
     let active = true;
@@ -234,6 +236,18 @@ export function useReadingProfile() {
     if (isReady.current) commit({ ...current.current, ...patch });
   }, [commit]);
 
+  const shareAction = useCallback((articleId: string, kind: "read" | "save", active: boolean) => {
+    if (!isReady.current || !remote.current || !owner.current || owner.current === ANONYMOUS || conflicted.current) return;
+    const expectedOwner = owner.current;
+    communityQueue.current = communityQueue.current.catch(() => undefined).then(async () => {
+      if (owner.current !== expectedOwner || !remote.current) return;
+      const response = await fetch("/api/engagement", { method: "POST", credentials: "same-origin", keepalive: true,
+        headers: { "Content-Type": "application/json" }, body: JSON.stringify({ owner: expectedOwner, articleId, kind, active }) });
+      if (!response.ok) throw new Error("Community activity could not be synced");
+      setCommunityStatus("synced");
+    }).catch(() => { if (owner.current === expectedOwner) setCommunityStatus("error"); });
+  }, []);
+
   const recordOpen = useCallback((article: Article) => {
     if (isReady.current && article.id) commit(addActivity(current.current, "opens"));
   }, [commit]);
@@ -244,14 +258,15 @@ export function useReadingProfile() {
     const saved = existing.bookmarks.includes(article.id);
     const next = { ...existing, bookmarks: saved ? existing.bookmarks.filter((id) => id !== article.id) : [...existing.bookmarks, article.id] };
     commit(saved ? next : addActivity(next, "saves"));
-  }, [commit]);
+    shareAction(article.id, "save", !saved);
+  }, [commit, shareAction]);
 
   // Read status is explicitly reported by the reader, independently of link opens.
   const toggleReadLog = useCallback((article: Article) => {
     if (!isReady.current) return;
-    try { commit(toggleProfileReadLog(current.current, article.id)); }
+    try { const wasRead = current.current.readLogs.some(log => log.articleId === article.id); commit(toggleProfileReadLog(current.current, article.id)); shareAction(article.id, "read", !wasRead); }
     catch (error) { setSyncStatus("error"); throw error; }
-  }, [commit]);
+  }, [commit, shareAction]);
 
-  return { profile, ready, storageLabel, syncStatus, updateProfile, recordOpen, toggleBookmark, toggleReadLog };
+  return { profile, ready, storageLabel, syncStatus, communityStatus, profileOwner: owner.current === ANONYMOUS ? null : owner.current, accountVerified: Boolean(remote.current && owner.current && owner.current !== ANONYMOUS), updateProfile, recordOpen, toggleBookmark, toggleReadLog };
 }

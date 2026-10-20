@@ -5,6 +5,7 @@ import { Check, Search, X } from "lucide-react";
 import { TOPICS, type CustomFeed, type Profile, type Source } from "@/lib/types";
 
 type Props = {
+  topicOptions?: string[];
   open: boolean;
   onClose: () => void;
   profile: Profile;
@@ -30,7 +31,7 @@ export default function FeedDialog(props: Props) {
   </dialog>;
 }
 
-function FeedForm({ onClose, profile, sources, onSave, editingFeed, onDelete, labelId: id }: Props & { labelId: string }) {
+function FeedForm({ onClose, profile, sources, onSave, editingFeed, onDelete, labelId: id,topicOptions=TOPICS }: Props & { labelId: string }) {
   const [name, setName] = useState(editingFeed?.name ?? "");
   const [companies, setCompanies] = useState<string[]>(editingFeed?.companies ?? []);
   const [topics, setTopics] = useState<string[]>(editingFeed?.topics ?? []);
@@ -61,7 +62,7 @@ function FeedForm({ onClose, profile, sources, onSave, editingFeed, onDelete, la
         {showCompanies && <div className="feed-company-picker" id={`${id}-companies`}><label className="feed-search"><Search size={15} aria-hidden="true" /><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find a company" aria-label="Find a company" /></label><div className="feed-company-options">{sources.filter((source) => source.company.toLowerCase().includes(query.toLowerCase())).map((source) => <label className="feed-company-option" key={source.id}><input type="checkbox" checked={companies.includes(source.id)} onChange={() => setCompanies(toggle(companies, source.id))} /><span>{source.company}</span>{companies.includes(source.id) && <Check size={14} aria-hidden="true" />}</label>)}{!sources.some((source) => source.company.toLowerCase().includes(query.toLowerCase())) && <p className="library-note">No companies found.</p>}</div></div>}
       </fieldset>
 
-      <fieldset className="feed-fieldset"><legend>Topics <span>Optional</span></legend><div className="feed-topic-options">{TOPICS.map((topic) => <button key={topic} type="button" className={`profile-interest${topics.includes(topic) ? " is-selected" : ""}`} aria-pressed={topics.includes(topic)} onClick={() => setTopics(toggle(topics, topic))}>{topic}{topics.includes(topic) && <Check size={13} aria-hidden="true" />}</button>)}</div></fieldset>
+      <fieldset className="feed-fieldset"><legend>Topics <span>Optional</span></legend><div className="feed-topic-options">{topicOptions.map((topic) => <button key={topic} type="button" className={`profile-interest${topics.includes(topic) ? " is-selected" : ""}`} aria-pressed={topics.includes(topic)} onClick={() => setTopics(toggle(topics, topic))}>{topic}{topics.includes(topic) && <Check size={13} aria-hidden="true" />}</button>)}</div></fieldset>
       <label className="feed-field">Leave out <span>Optional</span><input value={exclude} onChange={(event) => setExclude(event.target.value)} placeholder="e.g. hiring, events, podcast" maxLength={300} /><small>Words or phrases separated by commas.</small></label>
       <div className="feed-rule-preview"><span>Your edition will include</span><p>Articles from {companies.length ? selectedCompanyNames.join(" or ") : "any company"}{topics.length ? ` about ${topics.join(" or ")}` : ", on any topic"}.{exclusions.length ? ` Excluding articles mentioning ${exclusions.join(", ")}.` : ""}</p><small>Company and topic selections must both match. Recommendations stay within these rules.</small></div>
       {error && <p className="feed-error" id={`${id}-error`} role="alert">{error}</p>}
