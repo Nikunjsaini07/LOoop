@@ -15,7 +15,7 @@ export async function renderReader(initialView: ReaderView) {
     const user=await getChatGPTUser();
     const stored=user?await db.prepare('SELECT data FROM profiles WHERE user_id=?').bind(user.userId).first<{data:string}>():null;
     const profile=stored?sanitizeProfile(JSON.parse(stored.data),emptyProfile(),new Set(catalog.map(s=>s.id))):emptyProfile();
-    const query=new URLSearchParams({mode:initialView==='trending'?'trending':'personal'});
+    const query=new URLSearchParams({mode:initialView==='trending'?'trending':'personal',period:'today'});
     const initial=await queryFeed(db,feedInput(query,profile,new Date().toISOString()),catalog,{pageSize:12,owner:user?`account:${user.userId}`:'guest'});
     return <BlogReader initialView={initialView} initial={initial}/>;
   }catch{/* Keep the public seed readable while an offline preview is being migrated. */}

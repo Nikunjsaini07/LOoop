@@ -6,10 +6,11 @@ The API starts with **1,260 real collected articles and all 37 companies**, expo
 
 - `GET /api/articles?pageSize=24`: server-ranked edition. `POST` accepts `{profile:{follows,interests,bookmarks,readLogs,activity}}` for private personalization, including device-local guest preferences. It does not persist these preferences or turn history into community metrics.
 - Filters: `company`, `topic`, `signal`, `q`, `exclude`, `ids`; modes: `personal`, `latest`, `following`, `trending`. Topic chips and saved-feed rules stay ANDed. Use `period=today|week|archive` for trends.
-- Subsequent pages pass the opaque `nextCursor` and original `snapshot`. Cursors are tied to the edition/preferences/owner; 409 means refresh the edition. Responses include `rankingVersion:2`, `rankingBasis`, `contentVersion`, `topicCatalog`, `total`, `hasMore` and the original article fields.
+- Home and Trending use twelve-story numbered pages: `page=2&edition=<id>&pageSize=12`. The response includes `page`, `pageSize`, `totalPages` and `edition`. Existing opaque `nextCursor` and original `snapshot` clients remain supported. Editions are tied to preferences/owner; 409 means refresh the edition. Responses also include `rankingVersion:2`, `rankingBasis`, `contentVersion`, `topicCatalog`, `total`, `hasMore`; Trending includes `communitySummary` for the selected period.
 - `GET /api/sources`: SQL source catalog, with the public seed as an offline fallback.
 - `GET/POST /api/profile`: verified account profile with owner checks and version compare-and-swap; anonymous profiles stay in browser storage. Database triggers maintain private normalized follows/bookmarks/read-log projections.
-- `POST /api/engagement`: authenticated, same-origin explicit read/save toggle. Deduplicated and server-timestamped; replayed profile history and anonymous activity never generate global votes.
+- `POST /api/engagement`: same-origin explicit read/save toggle, deduplicated and server-timestamped. Verified accounts use their server identity; guest browsers receive an HttpOnly deduplication cookie. Each identity contributes once per article/kind, undo deactivates it, and historical profile imports never generate votes. Guest identity is not private-profile authentication.
+- `GET /api/engagement?ids=...`: current public totals, no reader identities; up to one hundred IDs. POST also returns confirmed totals. Visible clients refresh every thirty seconds and on focus.
 - `GET /api/refresh`: source health and scheduler heartbeat. `POST` remains an authenticated, same-origin request for one due batch.
 
 See [RECOMMENDATIONS.md](../../RECOMMENDATIONS.md) for scoring, schema, privacy and cache details.

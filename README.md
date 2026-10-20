@@ -12,6 +12,7 @@ Companies, sources and topics are SQL entities. The server ranks the full matchi
 
 - Home: personalized ordering, latest posts, followed companies and saved custom feeds.
 - Trending: recent unique reader logs and saves, with fresh discovery when there is no community activity.
+- Companies: `/companies` brings together a company spotlight and a searchable, sortable directory in the same reading column as the other pages. Each company shows its collected blogs, synced-account followers, shared bookmarks and explicit read logs. Follow controls use the existing reading profile; company links open a filtered feed.
 - Custom feeds: company/topic rules plus hard keyword exclusions, with editing and preview.
 - Search and company/topic filters, stable snapshot pagination and progressive article loading.
 - Article pages: every feed/library title opens `/articles/[id]` inside the app, with the publisher's short excerpt, original link, bookmark action and explicit read-log control. Missing excerpts have an honest fallback; full articles stay with their publishers.
@@ -80,7 +81,11 @@ python -m unittest discover -s scripts -p test_import_collector.py
 
 ## Reading data and automatic updates
 
+Historical archives can be collected separately from the recent-feed scheduler. The 20 October 2026 local backfill expanded the app to 5,701 entries, including 406 Netflix posts, 1,113 Meta posts and 1,184 Apple ML research entries. See [BACKFILL.md](BACKFILL.md) for supported publishers, repeatable import commands, coverage limits and verification. The bundled seed and deployed remote database are separate from this local archive.
+
 `GET /api/articles` returns articles, sources, pagination metadata and refresh timestamps. It supports `q`, `company`, `topic`, `signal`, `exclude`, `ids`, `pageSize`, `cursor` and `snapshot`; subsequent pages should retain their original snapshot. Signal chips (Rust, Data, Scale, Reliability, Realtime, Networking) match collected titles, excerpts and tags, and remain AND constraints with custom-feed rules. `GET /api/sources` returns the fixed source catalog, and `GET /api/refresh` reports actual source health and refresh mode.
+
+`GET /api/companies` returns company summaries aggregated across the full archive, independently of feed pagination. Follower totals count synced accounts; anonymous follows remain personal to the device. Bookmark and read-log totals count active shared engagement, including deduplicated guest activity. If community storage is unavailable, the directory retains real collected articles and displays unavailable community metrics as a dash.
 
 Public reading works from the bundled real archive even before a new D1 database is populated. With migrated D1 available, article requests start bounded background refreshes without holding up the article response. Four due sources run per eligible batch, with a global one-minute cooldown and a six-hour interval per source. Fixed RSS/Atom endpoints and approved listing adapters are used; listing adapters check robots.txt. LinkedIn remains a manual source. Network/parser failures keep previously collected articles available.
 

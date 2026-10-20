@@ -60,17 +60,22 @@ eligible AS (
     AND NOT EXISTS(SELECT 1 FROM json_each(p,'$.exclude') j WHERE instr(lower(a.title||' '||a.summary||' '||a.company),j.value)>0)
     AND (json_extract(p,'$.q')='' OR instr(lower(a.title||' '||a.summary||' '||a.company),json_extract(p,'$.q'))>0)
 ),
-context AS (SELECT EXISTS(SELECT 1 FROM eligible WHERE popularity>0) AS has_popularity),
+context AS (SELECT COUNT(*) AS popular_count FROM eligible WHERE popularity>0),
+-- Quiet windows still offer ten stories; recent discoveries follow every genuinely ranked story.
+discovery AS (
+  SELECT id,ROW_NUMBER() OVER(ORDER BY COALESCE(published_at,discovered_at) DESC,id DESC) AS discovery_rank
+  FROM eligible WHERE popularity=0
+),
 scored AS (
   SELECT e.*,CASE
-    WHEN json_extract(p,'$.mode')='trending' AND has_popularity=1 THEN popularity
+    WHEN json_extract(p,'$.mode')='trending' THEN popularity
     WHEN json_extract(p,'$.mode') IN ('latest','following') THEN julianday(COALESCE(published_at,discovered_at))
     ELSE 4.0/(1+age_days/(CASE WHEN (SELECT active_days FROM cadence)>=7 THEN 7.0 ELSE 14.0 END))
       +CASE WHEN json_extract(p,'$.mode')='personal' THEN followed*3+interest_matches*2+saved_matches*0.6+MIN(4,read_affinity*1.2)+company_affinity*0.4-already_read*12 ELSE 0 END END AS base_score,
-    CASE WHEN json_extract(p,'$.mode')='trending' THEN CASE WHEN has_popularity=1 THEN 'engagement' ELSE 'freshness' END ELSE json_extract(p,'$.mode') END AS basis
-  FROM eligible e,input,context
-  WHERE json_extract(p,'$.mode')<>'trending' OR (has_popularity=1 AND popularity>0)
-    OR (has_popularity=0 AND (json_extract(p,'$.period')='archive' OR age_days<=CASE json_extract(p,'$.period') WHEN 'today' THEN 1 ELSE 7 END))
+    CASE WHEN json_extract(p,'$.mode')='trending' THEN CASE WHEN popular_count>0 THEN 'engagement' ELSE 'freshness' END ELSE json_extract(p,'$.mode') END AS basis
+  FROM eligible e CROSS JOIN input CROSS JOIN context LEFT JOIN discovery d ON d.id=e.id
+  WHERE json_extract(p,'$.mode')<>'trending' OR popularity>0
+    OR d.discovery_rank<=MAX(0,10-popular_count)
 ),
 varied AS (SELECT *,base_score-CASE WHEN basis='personal' THEN (ROW_NUMBER() OVER(PARTITION BY company_id ORDER BY base_score DESC,id DESC)-1)*1.8 ELSE 0 END AS score FROM scored),
 ranked AS (SELECT id,basis,ROW_NUMBER() OVER(ORDER BY CASE WHEN basis='personal' THEN already_read ELSE 0 END ASC,score DESC,COALESCE(published_at,discovered_at) DESC,id DESC)-1 AS position FROM varied)
@@ -97,7 +102,7 @@ export async function queryFeed(db: D1Database, input: FeedInput, sources: Sourc
   } else {
     const revisions = (await db.prepare("SELECT id,value FROM app_state WHERE id IN ('content_revision','engagement_revision')").all<{ id: string; value: number }>()).results;
     const revision = revisions.map(r => `${r.id}=${r.value}`).sort().join('|');
-    const requestHash = `${stableHash}:${revision}:${Math.floor(now / 300000)}`;
+    const requestHash = `${stableHash}:${input.mode === "trending" ? "trends-v3:" : ""}${revision}:${Math.floor(now / 300000)}`;
     session = await db.prepare('SELECT * FROM feed_sessions WHERE owner_hash=? AND request_hash=? AND expires_at>? LIMIT 1').bind(ownerHash, requestHash, new Date(now).toISOString()).first<Session>();
     if (!session) {
       const id = crypto.randomUUID();

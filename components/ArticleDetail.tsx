@@ -5,12 +5,16 @@ import { ArrowLeft, ArrowRight, ArrowUpRight, Bookmark, BookOpenCheck, Check, Lo
 import { useReadingProfile } from "@/lib/useReadingProfile";
 import type { Article } from "@/lib/types";
 import CompanyLogo from "./CompanyLogo";
+import CommunityStats from "./CommunityStats";
+import { useEngagementTotals } from "@/lib/useEngagementTotals";
+import SiteHeader from "./SiteHeader";
 
 const dateLabel = (value: string) => new Date(value).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 
 export default function ArticleDetail({ article }: { article: Article }) {
-  const { profile, ready, storageLabel, syncStatus, communityStatus, accountVerified, recordOpen, toggleBookmark, toggleReadLog } = useReadingProfile();
+  const { profile, ready, storageLabel, syncStatus, communityStatus, recordOpen, toggleBookmark, toggleReadLog } = useReadingProfile();
   const [message, setMessage] = useState("");
+  const totals = useEngagementTotals([article]);
   const saved = profile.bookmarks.includes(article.id);
   const readLog = profile.readLogs.find((log) => log.articleId === article.id);
   const publisher = new URL(article.url).hostname.replace(/^www\./, "");
@@ -22,10 +26,7 @@ export default function ArticleDetail({ article }: { article: Article }) {
 
   return <div className="publication view-article">
     <a className="skip-link" href="#article-detail">Skip to article</a>
-    <header className="site-header">
-      <a className="wordmark" href="/"><span className="brand-mark" aria-hidden="true">⁄</span>readzz</a>
-      <nav className="main-nav" aria-label="Main navigation"><a className="nav-item is-active" href="/">Feed</a><a className="nav-item" href="/trending">Trending</a><a className="nav-item" href="/profile">Profile</a></nav>
-    </header>
+    <SiteHeader active="home" />
     <main className="reading-main detail-main" id="article-detail">
       <a className="back-to-feed" href="/"><ArrowLeft size={13} /> Back to feed</a>
       <article>
@@ -33,6 +34,7 @@ export default function ArticleDetail({ article }: { article: Article }) {
           <div className="detail-byline"><span className="publisher-label"><CompanyLogo companyId={article.company_id} company={article.company} decorative />{article.company}</span><i aria-hidden="true" /><time dateTime={article.published_at || article.discovered_at}>{article.published_at ? "" : "Collected "}{dateLabel(article.published_at || article.discovered_at)}</time></div>
           <h1>{article.title}</h1>
           <div className="detail-tags">{article.topics.map((topic) => <span className="article-topic" key={topic}>{topic}</span>)}</div>
+          <CommunityStats stats={totals[article.id]} />
         </header>
         <section className="abstract-tray tray" aria-labelledby="abstract-heading">
           <div className="abstract-sheet sheet"><h2 className="eyebrow" id="abstract-heading">The short version</h2><p className={abstract ? "detail-abstract" : "detail-abstract detail-no-abstract"}>{abstract || "The publisher hasn’t provided an abstract for this article. Follow the link below to read the original story."}</p></div>
@@ -47,7 +49,7 @@ export default function ArticleDetail({ article }: { article: Article }) {
         {communityStatus === "error" && <p className="detail-message" role="status">Your personal log is saved. Community activity could not be synced.</p>}
         <div className="detail-secondary-actions"><button className="text-button" disabled={!ready} aria-pressed={saved} onClick={() => toggleBookmark(article)}><Bookmark size={14} fill={saved ? "currentColor" : "none"} />{saved ? "Bookmarked" : "Save for later"}</button><span className="detail-storage" role="status">{ready ? storageLabel : "Opening your reading profile…"}</span></div>
         {ready && syncStatus === "local" && <p className="detail-sync-link"><a href={`/signin-with-chatgpt?return_to=${encodeURIComponent(`/articles/${article.id}`)}`} target="_top">Sign in to sync across devices <ArrowUpRight size={11} /></a></p>}
-        {ready && accountVerified && <p className="detail-sync-link">Signed-in read logs and saves help rank community trends.</p>}
+        {ready && <p className="detail-sync-link">Your bookmarks and read logs help shape Trending. Undoing an action updates the totals.</p>}
       </article>
       <footer className="paper-footer"><span>A little reading, every day.</span><span>Stories stay with their publishers.</span></footer>
     </main>

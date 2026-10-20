@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import "./library.css";
 import "./article.css";
+import "./community.css";
 
 export const metadata: Metadata = {
   title: "readzz — Engineering, without the noise",

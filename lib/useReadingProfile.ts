@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Article, Profile } from "./types";
 import { emptyProfile, sanitizeProfile, toggleReadLog as toggleProfileReadLog } from "./server/core";
+import { announceEngagement } from "./community-events";
 
 type SyncStatus = "local" | "syncing" | "synced" | "error";
 type StoredProfile = { format: 1; owner: string; profile: Profile; serverVersion: number; dirty: boolean };
@@ -237,13 +238,15 @@ export function useReadingProfile() {
   }, [commit]);
 
   const shareAction = useCallback((articleId: string, kind: "read" | "save", active: boolean) => {
-    if (!isReady.current || !remote.current || !owner.current || owner.current === ANONYMOUS || conflicted.current) return;
+    if (!isReady.current || !owner.current || (owner.current !== ANONYMOUS && (!remote.current || conflicted.current))) return;
     const expectedOwner = owner.current;
     communityQueue.current = communityQueue.current.catch(() => undefined).then(async () => {
-      if (owner.current !== expectedOwner || !remote.current) return;
+      if (owner.current !== expectedOwner || (expectedOwner !== ANONYMOUS && !remote.current)) return;
       const response = await fetch("/api/engagement", { method: "POST", credentials: "same-origin", keepalive: true,
-        headers: { "Content-Type": "application/json" }, body: JSON.stringify({ owner: expectedOwner, articleId, kind, active }) });
+        headers: { "Content-Type": "application/json" }, body: JSON.stringify({ owner: expectedOwner===ANONYMOUS?null:expectedOwner, articleId, kind, active }) });
       if (!response.ok) throw new Error("Community activity could not be synced");
+      const result = await response.json() as {stats?:{reads:number;saves:number}};
+      if (result.stats && owner.current===expectedOwner) announceEngagement(articleId,result.stats);
       setCommunityStatus("synced");
     }).catch(() => { if (owner.current === expectedOwner) setCommunityStatus("error"); });
   }, []);
