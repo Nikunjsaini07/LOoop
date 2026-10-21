@@ -6,7 +6,7 @@ import "./companies.css";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
-  title: "Companies — readzz",
+  title: "Companies — Readwell",
   description: "Find the engineering teams worth reading. Explore company blogs, follow your favorites, and see what readers are saving.",
 };
 

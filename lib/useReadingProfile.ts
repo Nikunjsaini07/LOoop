@@ -3,10 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Article, Profile } from "./types";
 import { emptyProfile, sanitizeProfile, toggleReadLog as toggleProfileReadLog } from "./server/core";
+import { applyIntent, takeIntent } from "./reading-intent";
 import { announceEngagement } from "./community-events";
+import { useAuthReady, useAuthRequest, useRequireAccount, useAccountId } from "@/components/AuthProvider";
 
 type SyncStatus = "local" | "syncing" | "synced" | "error";
-type StoredProfile = { format: 1; owner: string; profile: Profile; serverVersion: number; dirty: boolean };
+type StoredProfile = { format: 1; owner: string; profile: Profile; serverVersion: number; generation?: number; dirty: boolean };
 const PREFIX = "scroll:reading-profile:v1:";
 const ANONYMOUS = "anonymous";
 
@@ -21,6 +23,10 @@ function validate(value: unknown): Profile {
   return sanitizeProfile(value, emptyProfile(), companies);
 }
 
+function ensureStorageBudget(profile: Profile) {
+  if (JSON.stringify(profile).length > 480000) throw new Error("Your reading library is full. Download your reading data and remove older entries before adding more.");
+}
+
 function addActivity(profile: Profile, kind: "opens" | "saves"): Profile {
   const date = new Date().toISOString().slice(0, 10);
   const days = profile.activity.map((day) => ({ ...day, reads: day.reads ?? 0 }));
@@ -32,8 +38,13 @@ function addActivity(profile: Profile, kind: "opens" | "saves"): Profile {
 }
 
 export function useReadingProfile() {
+  const authReady = useAuthReady();
+  const authRequest = useAuthRequest();
+  const accountId = useAccountId();
+  const requireAccount = useRequireAccount();
   const [profile, setProfile] = useState<Profile>(() => emptyProfile());
   const [ready, setReady] = useState(false);
+  const [identity, setIdentity] = useState<{ owner: string | null; verified: boolean }>({ owner: null, verified: false });
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("local");
   const [storageLabel, setStorageLabel] = useState("Loading your reading profile");
   const current = useRef<Profile>(emptyProfile());
@@ -41,27 +52,39 @@ export function useReadingProfile() {
   const owner = useRef<string | null>(null);
   const storageWorks = useRef(true);
   const serverVersion = useRef(0);
+  const accountGeneration = useRef(0);
   const revision = useRef(0);
   const dirty = useRef(false);
   const conflicted = useRef(false);
   const remote = useRef(false);
   const scheduleSave = useRef<() => void>(() => undefined);
   const persistCopy = useRef<() => void>(() => undefined);
-  const communityQueue = useRef<Promise<unknown>>(Promise.resolve());
+  const retrySave = useRef<() => void>(() => undefined);
+  const resolveCopy = useRef<(restore: boolean) => void>(() => undefined);
+  const recoveryCopy = useRef<StoredProfile | null>(null);
+  const [recovery, setRecovery] = useState<Profile | null>(null);
+  const [pendingCustomize, setPendingCustomize] = useState(false);
+  const [mutationError, setMutationError] = useState("");
   const [communityStatus, setCommunityStatus] = useState<"idle" | "synced" | "error">("idle");
 
   useEffect(() => {
+    if (!authReady) return;
     let active = true;
     let saving = false;
+    let retries = 0;
+    let refreshing = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
     const controller = new AbortController();
     const storageKey = () => owner.current ? `${PREFIX}${encodeURIComponent(owner.current)}` : null;
 
     function label(status: SyncStatus) {
       if (!active) return;
+      const profileOwner = owner.current === ANONYMOUS ? null : owner.current;
+      const verified = Boolean(remote.current && profileOwner);
+      setIdentity((previous) => previous.owner === profileOwner && previous.verified === verified ? previous : { owner: profileOwner, verified });
       setSyncStatus(status);
       setStorageLabel(!storageWorks.current || !owner.current ? "Available in this session"
-        : owner.current === ANONYMOUS ? "Saved on this device"
+        : owner.current === ANONYMOUS ? "Sign in to save your reading"
           : conflicted.current ? "Device copy · account sync conflict"
             : status === "error" ? "Saved on this device · sync unavailable"
               : status === "synced" ? "Synced to your account" : "Saved on this device · syncing");
@@ -85,17 +108,18 @@ export function useReadingProfile() {
       const key = storageKey();
       if (!key || !storageWorks.current) return;
       try {
-        const value: StoredProfile = { format: 1, owner: owner.current!, profile: current.current, serverVersion: serverVersion.current, dirty: dirty.current };
+        const value: StoredProfile = { format: 1, owner: owner.current!, profile: current.current, serverVersion: serverVersion.current, generation: accountGeneration.current, dirty: dirty.current };
         window.localStorage.setItem(key, JSON.stringify(value));
       } catch { storageWorks.current = false; }
     }
     persistCopy.current = persist;
 
-    function queue() {
+    function queue(delay = 450) {
       if (timer) clearTimeout(timer);
-      timer = setTimeout(() => { timer = null; void flush(); }, 450);
+      timer = setTimeout(() => { timer = null; void flush(); }, delay);
     }
-    scheduleSave.current = queue;
+    scheduleSave.current = () => { retries = 0; queue(); };
+    retrySave.current = () => { retries = 0; if (conflicted.current) void refreshAccount(true); else if (remote.current) void flush(); else void initialize(); };
 
     async function flush() {
       if (!active || !isReady.current || !remote.current || conflicted.current || saving || !dirty.current) return;
@@ -105,9 +129,9 @@ export function useReadingProfile() {
       let succeeded = false;
       label("syncing");
       try {
-        const response = await fetch("/api/profile", {
+        const response = await authRequest("/api/profile", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ profile: savedProfile, version: serverVersion.current, owner: owner.current }),
+          body: JSON.stringify({ profile: savedProfile, version: serverVersion.current, generation: accountGeneration.current, owner: owner.current }),
           signal: controller.signal, credentials: "same-origin",
         });
         if (!active) return;
@@ -116,16 +140,26 @@ export function useReadingProfile() {
           conflicted.current = true;
           persist();
           label("error");
+          await refreshAccount(true);
           return;
         }
         if (response.status === 401) remote.current = false;
-        if (!response.ok) throw new Error("Profile sync failed");
-        const result = await response.json() as { profile: Profile; version: number; user?: { id: string } };
+        if (!response.ok) {
+          const problem = await response.json().catch(() => ({})) as { error?: string };
+          if (response.status < 500) retries = 3;
+          throw new Error(problem.error || "Your changes could not be synced. Try again.");
+        }
+        const result = await response.json() as { profile: Profile; version: number; generation?: number; user?: { id: string }; stats?: Record<string, { reads: number; saves: number }> };
         if (!active) return;
         if (result.user?.id !== owner.current || !Number.isInteger(result.version) || result.version < 1) throw new Error("Profile identity changed");
         const normalized = validate(result.profile);
         serverVersion.current = result.version;
+        accountGeneration.current = result.generation ?? 0;
         succeeded = true;
+        retries = 0;
+        setMutationError("");
+        for (const [id, stats] of Object.entries(result.stats ?? {})) announceEngagement(id, stats);
+        setCommunityStatus("synced");
         if (revision.current === savedRevision) {
           current.current = normalized;
           dirty.current = false;
@@ -137,17 +171,83 @@ export function useReadingProfile() {
           persist();
           label("syncing");
         }
-      } catch {
-        if (active) { persist(); label("error"); }
+      } catch (error) {
+        if (active) { persist(); label("error"); setMutationError(error instanceof Error ? error.message : "Your changes could not be synced."); }
       } finally {
         saving = false;
-        if (active && !conflicted.current && remote.current && dirty.current && (succeeded || revision.current > savedRevision)) queue();
+        if (active && !conflicted.current && remote.current && dirty.current) {
+          if (succeeded || revision.current > savedRevision) queue();
+          else if (retries < 3) queue(1000 * 2 ** retries++);
+        }
       }
     }
 
+    function retainCopy(copy: StoredProfile) {
+      recoveryCopy.current = copy;
+      setRecovery(copy.profile);
+      const key = storageKey();
+      if (key) { try { window.localStorage.setItem(`${key}:unsynced`, JSON.stringify(copy)); } catch { storageWorks.current = false; } }
+    }
+
+    async function refreshAccount(preserve = false) {
+      if (!active || !remote.current || refreshing) return;
+      refreshing = true;
+      const expectedOwner = owner.current;
+      const before = revision.current;
+      try {
+        const response = await authRequest("/api/profile", { signal: controller.signal, cache: "no-store" });
+        if (!response.ok) throw new Error("Could not check your account. Try again when you’re online.");
+        const result = await response.json() as { profile: Profile; version: number; generation?: number; user?: { id: string } };
+        if (!active || owner.current !== expectedOwner || result.user?.id !== expectedOwner) return;
+        if (!Number.isInteger(result.version) || result.version < 0) throw new Error("Invalid account version");
+        if (!preserve && result.version === serverVersion.current && (result.generation ?? 0) === accountGeneration.current) return;
+        if (revision.current !== before || (dirty.current && !preserve)) { void flush(); return; }
+        if (preserve && dirty.current && (result.generation ?? 0) === accountGeneration.current) retainCopy({ format: 1, owner: expectedOwner!, profile: current.current, serverVersion: serverVersion.current, generation: accountGeneration.current, dirty: true });
+        current.current = validate(result.profile);
+        serverVersion.current = result.version;
+        accountGeneration.current = result.generation ?? 0;
+        dirty.current = false;
+        conflicted.current = false;
+        setProfile(current.current);
+        persist();
+        label("synced");
+        if (recoveryCopy.current) setStorageLabel("Account loaded · unsynced device copy retained");
+      } catch (error) { if (active) { label("error"); setMutationError(error instanceof Error ? error.message : "Account check failed."); } }
+      finally { refreshing = false; }
+    }
+
+    resolveCopy.current = (restore) => {
+      const copy = recoveryCopy.current;
+      if (!copy || copy.owner !== owner.current || !remote.current || conflicted.current) return;
+      if (restore) { try { ensureStorageBudget(copy.profile); } catch (error) { setMutationError(error instanceof Error ? error.message : "Export this device copy before restoring."); return; } }
+      recoveryCopy.current = null;
+      setRecovery(null);
+      const key = storageKey();
+      if (key) { try { window.localStorage.removeItem(`${key}:unsynced`); } catch { /* Keep the working session. */ } }
+      setMutationError("");
+      if (restore) {
+        current.current = copy.profile;
+        revision.current += 1;
+        dirty.current = true;
+        setProfile(copy.profile);
+        persist();
+        label("syncing");
+        queue();
+      } else { persist(); label("synced"); }
+    };
+
     async function initialize() {
       try {
-        const response = await fetch("/api/profile", { signal: controller.signal, credentials: "same-origin", cache: "no-store" });
+        if (accountId === null) {
+          // Signed-out visits do not create or restore a synthetic reader profile.
+          owner.current = ANONYMOUS;
+          remote.current = false;
+          dirty.current = false;
+          current.current = emptyProfile();
+          label("local");
+          return;
+        }
+        const response = await authRequest("/api/profile", { signal: controller.signal, credentials: "same-origin", cache: "no-store" });
         if (!active) return;
         if (response.status === 401) {
           owner.current = ANONYMOUS;
@@ -159,7 +259,7 @@ export function useReadingProfile() {
           label("local");
         } else {
           if (!response.ok) throw new Error("Account profile unavailable");
-          const result = await response.json() as { profile: Profile; version: number; user?: { id: string } };
+          const result = await response.json() as { profile: Profile; version: number; generation?: number; user?: { id: string } };
           if (!active) return;
           if (typeof result.user?.id !== "string" || !result.user.id || result.user.id.length > 250 || !Number.isInteger(result.version) || result.version < 0) throw new Error("Invalid account profile");
           owner.current = result.user.id;
@@ -167,10 +267,11 @@ export function useReadingProfile() {
           const local = readCopy(key, owner.current);
           const serverProfile = validate(result.profile);
           serverVersion.current = result.version;
+        accountGeneration.current = result.generation ?? 0;
           remote.current = true;
           // An interrupted navigation can cancel a queued save. Resume only the confirmed
           // owner's device copy based on exactly this server version; CAS still guards it.
-          if (local?.dirty && local.serverVersion === result.version) {
+          if (local?.dirty && local.serverVersion === result.version && (local.generation ?? 0) === accountGeneration.current) {
             current.current = local.profile;
             dirty.current = true;
             persist();
@@ -179,9 +280,15 @@ export function useReadingProfile() {
           } else {
             // A changed server version wins. Keep the pending copy separately without replay.
             let retained = false;
-            if (local?.dirty) {
-              try { window.localStorage.setItem(`${key}:unsynced`, JSON.stringify(local)); retained = true; }
+            recoveryCopy.current = null;
+            setRecovery(null);
+            if (local?.dirty && (local.generation ?? 0) === accountGeneration.current) {
+              try { retainCopy(local); retained = true; }
               catch { storageWorks.current = false; }
+            }
+            if (!retained) {
+              const retainedCopy = readCopy(`${key}:unsynced`, owner.current);
+              if (retainedCopy?.dirty && (retainedCopy.generation ?? 0) === accountGeneration.current) { retainCopy(retainedCopy); retained = true; }
             }
             current.current = serverProfile;
             dirty.current = false;
@@ -199,11 +306,31 @@ export function useReadingProfile() {
         current.current = emptyProfile();
         label("error");
       } finally {
-        if (active) { isReady.current = true; setProfile(current.current); setReady(true); }
+        if (active) {
+          if (remote.current && !recoveryCopy.current) {
+            const intent = takeIntent();
+            if (intent?.kind === "customize") setPendingCustomize(true);
+            else if (intent) {
+              try { const next = validate(applyIntent(current.current, intent)); ensureStorageBudget(next); current.current = next; dirty.current = true; persist(); label("syncing"); queue(); }
+              catch (error) { setMutationError(error instanceof Error ? error.message : "Finish your action again."); }
+            }
+          }
+          isReady.current = true; setProfile(current.current); setReady(true);
+        }
       }
     }
     void initialize();
+    const reconnect = () => { retries = 0; if (dirty.current) void flush(); else if (remote.current) void refreshAccount(); else void initialize(); };
+    const changedElsewhere = (event: StorageEvent) => { if (event.key === storageKey()) reconnect(); };
+    window.addEventListener("online", reconnect);
+    window.addEventListener("focus", reconnect);
+    window.addEventListener("storage", changedElsewhere);
     return () => {
+      window.removeEventListener("online", reconnect);
+      window.removeEventListener("focus", reconnect);
+      window.removeEventListener("storage", changedElsewhere);
+      retrySave.current = () => undefined;
+      resolveCopy.current = () => undefined;
       active = false;
       isReady.current = false;
       if (timer) clearTimeout(timer);
@@ -212,12 +339,16 @@ export function useReadingProfile() {
       scheduleSave.current = () => undefined;
       persistCopy.current = () => undefined;
     };
-  }, []);
+  }, [authReady, authRequest, accountId]);
 
   const commit = useCallback((next: Profile) => {
-    if (!isReady.current) return;
+    if (!isReady.current) return false;
+    if (!owner.current) { setMutationError("Your account has not loaded. Try syncing again before making changes."); return false; }
+    if (recoveryCopy.current) { setMutationError("Review your unsynced device copy before making more changes."); return false; }
     try {
       const validated = validate(next);
+      ensureStorageBudget(validated);
+      setMutationError("");
       current.current = validated;
       revision.current += 1;
       dirty.current = remote.current || owner.current !== ANONYMOUS;
@@ -230,46 +361,46 @@ export function useReadingProfile() {
       else setStorageLabel("Saved on this device · syncing");
       setSyncStatus(conflicted.current || (!remote.current && owner.current !== ANONYMOUS) ? "error" : remote.current ? "syncing" : "local");
       if (remote.current && !conflicted.current) scheduleSave.current();
-    } catch { setSyncStatus("error"); }
+      return true;
+    } catch (error) {
+      setMutationError(error instanceof Error ? error.message : "Your change could not be saved.");
+      return false;
+    }
   }, []);
 
   const updateProfile = useCallback((patch: Partial<Profile>) => {
-    if (isReady.current) commit({ ...current.current, ...patch });
-  }, [commit]);
+    return isReady.current && requireAccount() ? commit({ ...current.current, ...patch }) : false;
+  }, [commit, requireAccount]);
 
-  const shareAction = useCallback((articleId: string, kind: "read" | "save", active: boolean) => {
-    if (!isReady.current || !owner.current || (owner.current !== ANONYMOUS && (!remote.current || conflicted.current))) return;
-    const expectedOwner = owner.current;
-    communityQueue.current = communityQueue.current.catch(() => undefined).then(async () => {
-      if (owner.current !== expectedOwner || (expectedOwner !== ANONYMOUS && !remote.current)) return;
-      const response = await fetch("/api/engagement", { method: "POST", credentials: "same-origin", keepalive: true,
-        headers: { "Content-Type": "application/json" }, body: JSON.stringify({ owner: expectedOwner===ANONYMOUS?null:expectedOwner, articleId, kind, active }) });
-      if (!response.ok) throw new Error("Community activity could not be synced");
-      const result = await response.json() as {stats?:{reads:number;saves:number}};
-      if (result.stats && owner.current===expectedOwner) announceEngagement(articleId,result.stats);
-      setCommunityStatus("synced");
-    }).catch(() => { if (owner.current === expectedOwner) setCommunityStatus("error"); });
-  }, []);
 
   const recordOpen = useCallback((article: Article) => {
-    if (isReady.current && article.id) commit(addActivity(current.current, "opens"));
+    if (isReady.current && owner.current && owner.current !== ANONYMOUS && article.id) commit(addActivity({ ...current.current, lastOpened: { articleId: article.id, openedAt: new Date().toISOString() } }, "opens"));
   }, [commit]);
 
   const toggleBookmark = useCallback((article: Article) => {
-    if (!isReady.current) return;
+    if (!isReady.current || !requireAccount({ kind: "bookmark", id: article.id, active: !current.current.bookmarks.includes(article.id) })) return false;
     const existing = current.current;
     const saved = existing.bookmarks.includes(article.id);
     const next = { ...existing, bookmarks: saved ? existing.bookmarks.filter((id) => id !== article.id) : [...existing.bookmarks, article.id] };
-    commit(saved ? next : addActivity(next, "saves"));
-    shareAction(article.id, "save", !saved);
-  }, [commit, shareAction]);
+    return commit(saved ? next : addActivity(next, "saves"));
+  }, [commit, requireAccount]);
 
   // Read status is explicitly reported by the reader, independently of link opens.
   const toggleReadLog = useCallback((article: Article) => {
-    if (!isReady.current) return;
-    try { const wasRead = current.current.readLogs.some(log => log.articleId === article.id); commit(toggleProfileReadLog(current.current, article.id)); shareAction(article.id, "read", !wasRead); }
-    catch (error) { setSyncStatus("error"); throw error; }
-  }, [commit, shareAction]);
+    if (!isReady.current || !requireAccount({ kind: "read", id: article.id, active: !current.current.readLogs.some(log => log.articleId === article.id) })) return false;
+    try { return commit(toggleProfileReadLog(current.current, article.id)); }
+    catch (error) { setMutationError(error instanceof Error ? error.message : "Your reading log could not be updated."); return false; }
+  }, [commit, requireAccount]);
 
-  return { profile, ready, storageLabel, syncStatus, communityStatus, profileOwner: owner.current === ANONYMOUS ? null : owner.current, accountVerified: Boolean(remote.current && owner.current && owner.current !== ANONYMOUS), updateProfile, recordOpen, toggleBookmark, toggleReadLog };
+  const rateRecommendation = useCallback((article: Article, value: "useful" | "not-relevant") => {
+    if (!isReady.current || !requireAccount({ kind: "feedback", id: article.id, active: true, value })) return false;
+    const ratings = current.current.recommendationFeedback ?? [];
+    const previous = ratings.find(item => item.articleId === article.id);
+    const rest = ratings.filter(item => item.articleId !== article.id);
+    commit({ ...current.current, recommendationFeedback: (previous?.value === value ? rest : [{articleId:article.id,value,at:new Date().toISOString()},...rest]).slice(0,500) });
+  }, [commit,requireAccount]);
+
+  const dismissCustomize = useCallback(() => setPendingCustomize(false), []);
+  return { profile, ready, storageLabel, syncStatus, communityStatus, mutationError, recovery, pendingCustomize, dismissCustomize,
+    retrySync: () => retrySave.current(), resolveRecovery: (restore: boolean) => resolveCopy.current(restore), profileOwner: identity.owner, accountVerified: identity.verified, updateProfile, recordOpen, toggleBookmark, toggleReadLog, rateRecommendation };
 }

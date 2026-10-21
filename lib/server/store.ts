@@ -23,6 +23,8 @@ function toArticle(row: ArticleRow): Article {
   return { ...row, topics };
 }
 
+export class ArticleUnavailableError extends Error {}
+
 export async function loadArticle(id: string): Promise<Article | null> {
   const fallback = seedArticles.find((article) => article.id === id) ?? null;
   try {
@@ -32,9 +34,12 @@ export async function loadArticle(id: string): Promise<Article | null> {
     if (fallback && new Date(fallback.discovered_at) < new Date(article.discovered_at)) article.discovered_at = fallback.discovered_at;
     return article;
   } catch {
-    return fallback;
+    if (fallback) return { ...fallback, stale: true };
+    throw new ArticleUnavailableError("The article archive is temporarily unavailable. Please try again.");
   }
 }
+
+
 
 export async function loadArticles(): Promise<{ articles: Article[]; updatedAt: string; liveAvailable: boolean }> {
   // The real, collected archive also works before a fresh D1 database is populated.

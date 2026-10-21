@@ -10,6 +10,8 @@ Existing `articles.company`, `articles.topics` and `profiles.data` remain compat
 
 ## Personal recommendations
 
+The personal edition now includes semantic affinities and a three-recent / one-historical / one-discovery mix when those candidates exist. Historical slots require explicit old publication dates and stored semantic evidence. Background inference, indexing commands, private feedback, thresholds and hosted rollout requirements are documented in [SEMANTIC_FEED.md](SEMANTIC_FEED.md). The rules below remain additional ranking signals within each lane.
+
 `lib/server/feed-query.ts` scores the complete matching archive in D1 **before** pagination. The browser displays the server's order and never re-ranks fetched pages.
 
 - Freshness: `4 / (1 + ageDays / freshnessWindow)`.
@@ -22,7 +24,7 @@ Existing `articles.company`, `articles.topics` and `profiles.data` remain compat
 - Already-read stories follow unread stories and also receive a score penalty.
 - SQL window functions apply a company-variety penalty within personal feeds. Latest and Following remain chronological.
 
-Custom company/topic selections, topic chips, exclusions and search are hard constraints. Topic chips are ANDed with custom-feed topic rules. A bookmark/read action creates a new personal edition; ordinary pagination preserves the current one. Recommendation reasons distinguish related reading history, explicit interests, followed companies and discovery.
+Custom company/topic selections, topic chips, exclusions and search are hard constraints. Topic chips are ANDed with custom-feed topic rules. Bookmark/read controls update immediately without changing the ranked edition. Refresh, explicit filters or account changes capture new preferences; pagination retains the edition’s original preference snapshot. Recommendation reasons distinguish related reading history, explicit interests, followed companies and discovery.
 
 ## Community trends
 
@@ -56,4 +58,4 @@ node scripts/ingestion.mjs --deploy
 
 Upgrade commands first save ignored SQL backups, then apply/backfill the reviewed migration and verify that original IDs/URLs and profiles were retained. They do not fabricate community events. `verify-domain` is read-only and exercises the actual full-archive SQL ranking query and foreign-key checks.
 
-Tests cover a relevant story beyond the newest 100 articles, reading affinities, already-read ordering, activity cadence, real-event ranking, historical/guest isolation, undo/deduplication, contribution caps, custom-filter intersections, cross-chunk pagination and owner-bound cursors. Full website deployment and a standalone auth provider are still separate work; current account endpoints use the existing Sites identity contract.
+Tests cover a relevant story beyond the newest 100 articles, reading affinities, already-read ordering, activity cadence, real-event ranking, historical/guest isolation, undo/deduplication, contribution caps, custom-filter intersections, cross-chunk pagination and owner-bound cursors. Website deployment remains separate work. Account endpoints now verify Clerk session tokens; see AUTH.md. Signed-out UI actions prompt sign-in rather than writing a guest reading profile.

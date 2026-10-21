@@ -3,6 +3,9 @@ import { articleId, canonicalUrl, inferTopics, parseFeed, plainText } from "./co
 import { writeArticles } from "./article-writer";
 
 const MAX_BYTES = 3 * 1024 * 1024;
+// PostHog's official RSS includes a larger historical window with full HTML.
+// Only this fixed source gets a larger response bound; parsing still caps 100 posts.
+const POSTHOG_FEED_BYTES = 8 * 1024 * 1024;
 export const INTERVAL_MS = 6 * 60 * 60 * 1000;
 const RETRY_MS = 60 * 60 * 1000;
 const BATCH_SIZE = 4;
@@ -12,7 +15,7 @@ const USER_AGENT = "readzz/1.0";
 type RefreshState = { source_id: string; last_attempt: string | null; last_success: string | null; etag: string | null; last_modified: string | null; error: string | null };
 export type RefreshResult = { source: string; status: "updated" | "unchanged" | "error"; articles: number; changed: number; error?: string };
 
-async function boundedFetch(value: string, headers: HeadersInit = {}, fetcher: Fetcher = fetch): Promise<{ response: Response; body: string }> {
+async function boundedFetch(value: string, headers: HeadersInit = {}, fetcher: Fetcher = fetch, maxBytes = MAX_BYTES): Promise<{ response: Response; body: string }> {
   let current = value;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 7500);
@@ -30,7 +33,7 @@ async function boundedFetch(value: string, headers: HeadersInit = {}, fetcher: F
       }
       if (response.status === 304) return { response, body: "" };
       if (!response.ok) { await response.body?.cancel(); throw new Error(`Publisher returned HTTP ${response.status}`); }
-      if (Number(response.headers.get("content-length") || 0) > MAX_BYTES) { await response.body?.cancel(); throw new Error("Publisher response is too large"); }
+      if (Number(response.headers.get("content-length") || 0) > maxBytes) { await response.body?.cancel(); throw new Error("Publisher response is too large"); }
       const reader = response.body?.getReader();
       if (!reader) return { response, body: "" };
       const decoder = new TextDecoder();
@@ -40,7 +43,7 @@ async function boundedFetch(value: string, headers: HeadersInit = {}, fetcher: F
         const chunk = await reader.read();
         if (chunk.done) break;
         bytes += chunk.value.byteLength;
-        if (bytes > MAX_BYTES) { await reader.cancel(); throw new Error("Publisher response is too large"); }
+        if (bytes > maxBytes) { await reader.cancel(); throw new Error("Publisher response is too large"); }
         body += decoder.decode(chunk.value, { stream: true });
       }
       body += decoder.decode();
@@ -113,7 +116,7 @@ async function refreshSource(db: D1Database, source: Source, state: RefreshState
       const headers: Record<string, string> = {};
       if (state?.etag) headers["If-None-Match"] = state.etag;
       if (state?.last_modified) headers["If-Modified-Since"] = state.last_modified;
-      const result = await boundedFetch(source.feed_urls[0], headers, fetcher);
+      const result = await boundedFetch(source.feed_urls[0], headers, fetcher, source.id === "posthog" ? POSTHOG_FEED_BYTES : MAX_BYTES);
       response = result.response;
       articles = response.status === 304 ? [] : await parseFeed(result.body, source, now, classify);
     } else articles = await fetchListing(source, now, fetcher, classify);

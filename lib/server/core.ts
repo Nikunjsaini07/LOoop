@@ -64,6 +64,8 @@ export async function parseFeed(xml: string, source: Source, discoveredAt: strin
   }
   const articles: Article[] = [];
   const seen = new Set<string>();
+  const allowed = source.include_url_regex ? new RegExp(source.include_url_regex) : null;
+  const excluded = source.exclude_url_regex ? new RegExp(source.exclude_url_regex) : null;
   for (const block of blocks) {
     const body = block[2];
     let link = "";
@@ -76,7 +78,7 @@ export async function parseFeed(xml: string, source: Source, discoveredAt: strin
     if (!link) link = element(body, ["guid"]);
     const url = canonicalUrl(link, source.blog_url);
     const title = plainText(element(body, ["title"]), 300);
-    if (!url || !link || !title || seen.has(url)) continue;
+    if (!url || !link || !title || seen.has(url) || (allowed && !allowed.test(url)) || excluded?.test(url)) continue;
     const summary = plainText(element(body, ["summary", "description", "encoded", "content"]));
     const published = element(body, ["published", "pubDate", "date"]);
     const date = published ? new Date(published) : null;
@@ -162,6 +164,22 @@ export function sanitizeProfile(input: unknown, previous: Profile, knownSources:
   if (data.follows !== undefined) output.follows = strings(data.follows, 100, 80, "follows").filter((id) => knownSources.has(id));
   if (data.interests !== undefined) output.interests = strings(data.interests, 30, 80, "interests");
   if (data.bookmarks !== undefined) output.bookmarks = strings(data.bookmarks, 4000, 80, "bookmarks").filter((id) => /^[\w-]+$/.test(id));
+  if (data.lastOpened !== undefined) {
+    const last = data.lastOpened;
+    if (!last || typeof last !== "object" || Array.isArray(last)) throw new ValidationError("Invalid last-opened story");
+    const row = last as Record<string, unknown>;
+    output.lastOpened = { articleId: validArticleId(row.articleId), openedAt: validReadTimestamp(row.openedAt) };
+  }
+  if (data.recommendationFeedback !== undefined) {
+    if (!Array.isArray(data.recommendationFeedback) || data.recommendationFeedback.length > 500) throw new ValidationError("Use at most 500 recommendation ratings");
+    const feedback = new Map<string, NonNullable<Profile["recommendationFeedback"]>[number]>();
+    for (const row of data.recommendationFeedback) {
+      if (!row || typeof row !== "object" || Array.isArray(row) || (row.value !== "useful" && row.value !== "not-relevant")) throw new ValidationError("Invalid recommendation rating");
+      const articleId = validArticleId(row.articleId);
+      feedback.set(articleId, { articleId, value: row.value, at: validReadTimestamp(row.at) });
+    }
+    output.recommendationFeedback = [...feedback.values()].sort((a,b) => b.at.localeCompare(a.at));
+  }
   if (data.customFeeds !== undefined) {
     if (!Array.isArray(data.customFeeds) || data.customFeeds.length > 30) throw new ValidationError("Use at most 30 custom feeds");
     const feeds = data.customFeeds as Record<string, unknown>[];

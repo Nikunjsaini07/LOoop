@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "./PageLink";
 import { ArrowLeft, ArrowRight, ArrowUpRight, Bookmark, BookOpenCheck, Check, LoaderCircle } from "lucide-react";
 import { useReadingProfile } from "@/lib/useReadingProfile";
 import type { Article } from "@/lib/types";
@@ -8,17 +9,21 @@ import CompanyLogo from "./CompanyLogo";
 import CommunityStats from "./CommunityStats";
 import { useEngagementTotals } from "@/lib/useEngagementTotals";
 import SiteHeader from "./SiteHeader";
+import { publisherExcerpt } from "@/lib/article-copy";
+import ReportStory from "./ReportStory";
+import ProfileSyncNotice from "./ProfileSyncNotice";
 
 const dateLabel = (value: string) => new Date(value).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 
-export default function ArticleDetail({ article }: { article: Article }) {
-  const { profile, ready, storageLabel, syncStatus, communityStatus, recordOpen, toggleBookmark, toggleReadLog } = useReadingProfile();
+export default function ArticleDetail({ article, returnTo = "/" }: { article: Article; returnTo?: string }) {
+  const reading = useReadingProfile();
+  const { profile, ready, syncStatus, communityStatus, recordOpen, toggleBookmark, toggleReadLog } = reading;
   const [message, setMessage] = useState("");
   const totals = useEngagementTotals([article]);
   const saved = profile.bookmarks.includes(article.id);
   const readLog = profile.readLogs.find((log) => log.articleId === article.id);
   const publisher = new URL(article.url).hostname.replace(/^www\./, "");
-  const abstract = article.summary.trim();
+  const abstract = publisherExcerpt(article);
   const logRead = () => {
     try { toggleReadLog(article); setMessage(""); }
     catch (error) { setMessage(error instanceof Error ? error.message : "Your reading log could not be updated. Try again."); }
@@ -28,7 +33,9 @@ export default function ArticleDetail({ article }: { article: Article }) {
     <a className="skip-link" href="#article-detail">Skip to article</a>
     <SiteHeader active="home" />
     <main className="reading-main detail-main" id="article-detail">
-      <a className="back-to-feed" href="/"><ArrowLeft size={13} /> Back to feed</a>
+      <ProfileSyncNotice {...reading} />
+      {article.stale && <p className="feed-context-note" role="status">Live metadata is unavailable. Showing the last collected publisher excerpt. <button className="text-button" onClick={() => window.location.reload()}>Check again</button></p>}
+      <Link className="back-to-feed" href={returnTo}><ArrowLeft size={13} /> Back to reading</Link>
       <article>
         <header className="detail-heading">
           <div className="detail-byline"><span className="publisher-label"><CompanyLogo companyId={article.company_id} company={article.company} decorative />{article.company}</span><i aria-hidden="true" /><time dateTime={article.published_at || article.discovered_at}>{article.published_at ? "" : "Collected "}{dateLabel(article.published_at || article.discovered_at)}</time></div>
@@ -47,10 +54,11 @@ export default function ArticleDetail({ article }: { article: Article }) {
         </section>
         {message && <p className="detail-message" role="alert">{message}</p>}
         {communityStatus === "error" && <p className="detail-message" role="status">Your personal log is saved. Community activity could not be synced.</p>}
-        <div className="detail-secondary-actions"><button className="text-button" disabled={!ready} aria-pressed={saved} onClick={() => toggleBookmark(article)}><Bookmark size={14} fill={saved ? "currentColor" : "none"} />{saved ? "Bookmarked" : "Save for later"}</button><span className="detail-storage" role="status">{ready ? storageLabel : "Opening your reading profile…"}</span></div>
-        {ready && syncStatus === "local" && <p className="detail-sync-link"><a href={`/signin-with-chatgpt?return_to=${encodeURIComponent(`/articles/${article.id}`)}`} target="_top">Sign in to sync across devices <ArrowUpRight size={11} /></a></p>}
-        {ready && <p className="detail-sync-link">Your bookmarks and read logs help shape Trending. Undoing an action updates the totals.</p>}
+        <div className="detail-secondary-actions"><button className="text-button" disabled={!ready} aria-pressed={saved} onClick={() => toggleBookmark(article)}><Bookmark size={14} fill={saved ? "currentColor" : "none"} />{saved ? "Bookmarked" : "Save for later"}</button></div>
+        {ready && syncStatus === "local" && <p className="detail-sync-link"><a href={`/sign-in?return_to=${encodeURIComponent(`/articles/${article.id}`)}`}>Sign in to save stories and log reads <ArrowUpRight size={11} /></a></p>}
+        {ready && syncStatus !== "local" && <p className="detail-sync-link">Your bookmarks and read logs help shape Trending. Undoing an action updates the totals.</p>}
       </article>
+      <ReportStory articleId={article.id} />
       <footer className="paper-footer"><span>A little reading, every day.</span><span>Stories stay with their publishers.</span></footer>
     </main>
   </div>;

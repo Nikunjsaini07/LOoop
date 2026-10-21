@@ -16,7 +16,8 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 from urllib.robotparser import RobotFileParser
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT.parent))
+COLLECTOR_ROOT = ROOT.parent if (ROOT.parent / "dailyblogs.py").is_file() else ROOT / "collector"
+sys.path.insert(0, str(COLLECTOR_ROOT))
 from dailyblogs import canonical_url, plain, timestamp
 
 ORIGIN = "https://www.uber.com"

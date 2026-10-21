@@ -43,6 +43,7 @@ function companyBase(source: Source): CompanySummary {
     id: source.id,
     name: source.company,
     blogUrl: source.blog_url,
+    sourceMode: source.mode,
     blogCount: 0,
     followers: 0,
     bookmarks: 0,
@@ -86,7 +87,7 @@ export function aggregateCompanyArchive(catalog: Source[], articles: Article[], 
 
 /** Entire-archive summaries; independent of the reader's current feed page. */
 export async function readCompanyDirectory(db: D1Database): Promise<CompanyDirectory> {
-  const [catalog, totals, latest, topicRows, freshness] = await Promise.all([
+  const [catalog, totals, latest, topicRows, freshness, health] = await Promise.all([
     readSources(db),
     (async () => db.prepare(COMPANY_TOTALS_SQL).all<CompanyTotals>())(),
     (async () => db.prepare(`WITH ranked AS (
@@ -101,6 +102,7 @@ export async function readCompanyDirectory(db: D1Database): Promise<CompanyDirec
       GROUP BY a.company_id,t.id,t.name ORDER BY a.company_id,total DESC,t.name`).all<{ company_id: string; name: string; total: number }>())(),
     (async () => db.prepare(`SELECT (SELECT MAX(last_success) FROM source_refresh) AS refreshed,
       (SELECT MAX(discovered_at) FROM articles) AS discovered`).first<{ refreshed: string | null; discovered: string | null }>())(),
+    (async () => db.prepare("SELECT source_id,last_success,error FROM source_refresh").all<{source_id:string;last_success:string|null;error:string|null}>())(),
   ]);
   const byId = new Map(totals.results.map(row => [row.id, row]));
   const latestByCompany = new Map(latest.results.map(row => [row.company_id, articleFromRow(row)]));
@@ -114,6 +116,8 @@ export async function readCompanyDirectory(db: D1Database): Promise<CompanyDirec
     const totals = byId.get(source.id);
     return {
       ...companyBase(source),
+      lastCollectedAt: health.results.find(row => row.source_id === source.id)?.last_success ?? null,
+      collectionDelayed: Boolean(health.results.find(row => row.source_id === source.id)?.error),
       blogCount: Number(totals?.blogs ?? 0),
       followers: Number(totals?.followers ?? 0),
       bookmarks: Number(totals?.bookmarks ?? 0),

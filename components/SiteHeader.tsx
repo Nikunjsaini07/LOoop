@@ -1,7 +1,12 @@
 "use client";
 
 import type { MouseEvent } from "react";
-import Link from "next/link";
+import Link from "./PageLink";
+import BrandLogo from "./BrandLogo";
+import { useAuth } from "@clerk/react";
+import { signInPath } from "@/lib/auth-path";
+import AccountControl from "./AccountControl";
+import ThemeToggle from "./ThemeToggle";
 
 type ReaderView = "home" | "trending" | "profile";
 type SiteView = ReaderView | "companies";
@@ -14,6 +19,7 @@ const links = [
 ] as const;
 
 export default function SiteHeader({ active, onNavigate }: { active: SiteView; onNavigate?: (next: ReaderView) => void }) {
+  const { isSignedIn } = useAuth();
   const navigate = (event: MouseEvent<HTMLAnchorElement>, next: ReaderView) => {
     if (!onNavigate || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     event.preventDefault();
@@ -21,9 +27,20 @@ export default function SiteHeader({ active, onNavigate }: { active: SiteView; o
   };
 
   return <header className="site-header">
-    <Link className="wordmark" href="/" onClick={(event) => navigate(event, "home")}><span className="brand-mark" aria-hidden="true">⁄</span>readzz</Link>
+    <Link className="wordmark" href="/" aria-label="Readwell home" onClick={(event) => navigate(event, "home")}><BrandLogo />Readwell</Link>
     <nav className="main-nav" aria-label="Main navigation">
-      {links.map(({ id, label, href }) => <Link key={id} href={href} className={`nav-item${active === id ? " is-active" : ""}`} aria-current={active === id ? "page" : undefined} onClick={id === "companies" ? undefined : (event) => navigate(event, id)}>{label}</Link>)}
+      {links.map(({ id, label, href }) => {
+        const account = id === "profile";
+        const selected = active === id && (!account || isSignedIn);
+        if (account && isSignedIn) return <AccountControl key={id} active={!!selected}
+          onProfileNavigate={onNavigate ? event => navigate(event, "profile") : undefined} />;
+        return <Link key={id} href={account && !isSignedIn ? signInPath("/profile") : href}
+          className={"nav-item" + (selected ? " is-active" : "")} aria-current={selected ? "page" : undefined}
+          onClick={id === "companies" || (account && !isSignedIn) ? undefined : event => navigate(event, id)}>
+          {account ? isSignedIn ? "Profile" : "Sign in" : label}
+        </Link>;
+      })}
     </nav>
+    <ThemeToggle />
   </header>;
 }

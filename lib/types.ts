@@ -9,7 +9,11 @@ export type Article = {
   discovered_at: string;
   topics: string[];
   recommendationReason?: string;
+  recommendationLane?: "recent" | "archive" | "discovery";
   engagement?: { reads: number; saves: number };
+  windowEngagement?: { reads: number; saves: number };
+  discovery?: boolean;
+  stale?: boolean;
 };
 
 export type Source = {
@@ -53,11 +57,14 @@ export type Profile = {
   customFeeds: CustomFeed[];
   bookmarks: string[];
   readLogs: ReadLog[];
+  lastOpened?: { articleId: string; openedAt: string };
   activity: ActivityDay[];
+  recommendationFeedback?: { articleId: string; value: "useful" | "not-relevant"; at: string }[];
 };
 
 export type ArticlePage = {
   articles: Article[];
+  degraded?: boolean;
   sources: Source[];
   total: number;
   hasMore: boolean;

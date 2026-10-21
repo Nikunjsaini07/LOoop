@@ -1,0 +1,89 @@
+/* Readwell after dusk: the same reading desk, with quieter sky and paper. */
+:root {
+  --surface: #fff;
+  --surface-hover: #f5f5f5;
+  --surface-soft: #f3f3f1;
+  --text-secondary: #555;
+  --text-muted: #858585;
+  --text-subtle: #a3a3a3;
+  --border-subtle: #e5e5e5;
+  --border-hover: #a3a3a3;
+  --selection: #d7eaf5;
+  --selection-ink: #212121;
+}
+
+:root.dark {
+  color-scheme: dark;
+  --canvas: #181c1f;
+  --paper: #20262a;
+  --tray: #1c2226;
+  --dot-ink: #a7b2b814;
+  --ink: #e7ebed;
+  --muted: #a7b2b8;
+  --line: #38434a;
+  --accent: #9cc9de;
+  --surface: #242c31;
+  --surface-hover: #303b42;
+  --surface-soft: #2b3338;
+  --text-secondary: #c0cad0;
+  --text-muted: #a7b2b8;
+  --text-subtle: #9ba9b2;
+  --border-subtle: #38434a;
+  --border-hover: #71838e;
+  --control-face: #242c31;
+  --control-hover: #303b42;
+  --control-selected: #d4dfe5;
+  --control-selected-hover: #e7ebed;
+  --control-selected-ink: #181c1f;
+  --control-border: #46545d;
+  --control-selected-border: #d4dfe5;
+  --control-ink: #d0d9de;
+  --selection: #405e6d;
+  --selection-ink: #f3f7fa;
+}
+
+::selection { background: var(--selection); color: var(--selection-ink); }
+/* Windows native popups need explicit option colors as well as color-scheme. */
+select { color-scheme: inherit; }
+select option, select optgroup { background-color: var(--paper); color: var(--ink); }
+select option:disabled { color: var(--muted); }
+.theme-toggle {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--paper);
+  color: var(--control-ink);
+  transition: background-color 150ms, border-color 150ms;
+}
+.theme-toggle:hover { background: var(--control-hover); border-color: var(--border-hover); }
+.theme-toggle:active { transform: translateY(1px); }
+.theme-toggle .theme-sun, .dark .theme-toggle .theme-moon { display: none; }
+.dark .theme-toggle .theme-sun { display: block; }
+.site-header .main-nav { margin-left: auto; }
+.dark .site-sky { filter: brightness(.28) saturate(.55); }
+.dark .brand-mark { filter: invert(1); }
+.dark .company-strip img { opacity: .8; padding: 3px; width: 24px; height: 24px; background: #fff; border-radius: 5px; }
+/* Publisher artwork retains its original background and contrast. */
+.dark :is(.company-icon, .directory-logo) { background: #f7fafb; border-color: #f7fafb; color: #292524; }
+.dark .issue-pill { background: var(--paper); border-color: var(--line); }
+.dark .detail-publisher-link > svg,
+.dark .detail-publisher-link:hover > svg { color: var(--control-selected-ink); }
+.dark .section-rule > i { background-image: radial-gradient(circle, var(--border-hover) 1px, transparent 1.2px); }
+.dark .activity-dot { --dot-ink: #38434a; }
+.dark .activity-level-1 { --dot-ink: #657c89; }
+.dark .activity-level-2 { --dot-ink: #9cc9de; }
+.dark .activity-level-3 { --dot-ink: #d4e8f2; }
+.dark .activity-selected::before { box-shadow: 0 0 0 2px var(--paper), 0 0 0 3px var(--accent); }
+.auth-page { position: relative; }
+.auth-page > .theme-toggle { position: absolute; top: 24px; right: 20px; }
+@media (max-width: 480px) {
+  .site-header { display: grid; grid-template-columns: 1fr auto; align-items: center; }
+  .site-header .main-nav { grid-column: 1 / -1; grid-row: 2; width: 100%; margin: 0; }
+  .site-header > .theme-toggle { grid-column: 2; grid-row: 1; }
+}
+@media (prefers-reduced-motion: reduce) { .theme-toggle { transition: none; } }

@@ -21,7 +21,8 @@ from urllib.robotparser import RobotFileParser
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT.parent))
+COLLECTOR_ROOT = ROOT.parent if (ROOT.parent / "dailyblogs.py").is_file() else ROOT / "collector"
+sys.path.insert(0, str(COLLECTOR_ROOT))
 from dailyblogs import canonical_url, parse_feed, plain, tag_name, timestamp
 
 USER_AGENT = "DailyEngineeringReader/1.0"

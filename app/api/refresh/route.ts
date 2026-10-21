@@ -1,4 +1,4 @@
-import { getChatGPTUser } from "@/app/chatgpt-auth";
+import { getCurrentUser, AuthenticationError } from "@/lib/server/auth";
 import { refreshStaleSources } from "@/lib/server/refresh";
 import { database, isSameOrigin, jsonError } from "@/lib/server/store";
 
@@ -14,10 +14,10 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  if (!isSameOrigin(request)) return jsonError("This request must come from readzz", 403);
-  const user = await getChatGPTUser();
-  if (!user) return jsonError("Sign in before requesting a source refresh", 401);
+  if (!isSameOrigin(request)) return jsonError("This request must come from Readwell", 403);
   try {
+    const user = await getCurrentUser(request);
+    if (!user) return jsonError("Sign in before requesting a source refresh", 401);
     return Response.json(await refreshStaleSources(), { headers: { "Cache-Control": "no-store" } });
-  } catch { return jsonError("Live source storage is temporarily unavailable. The collected archive is still available.", 503); }
+  } catch (error) { if (error instanceof AuthenticationError) return jsonError(error.message,401); return jsonError("Live source storage is temporarily unavailable. The collected archive is still available.", 503); }
 }

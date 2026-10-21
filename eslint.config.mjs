@@ -9,9 +9,19 @@ const eslintConfig = defineConfig([
   globalIgnores([
     // Default ignores of eslint-config-next:
     ".next/**",
+    ".vinext/**",
+    ".wrangler/**",
+    ".sites-runtime/**",
+    "dist/**",
+    "outputs/**",
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Retained starter sources are omitted from the clean release archive.
+    "vendor/**", "examples/**", "components/ui/**", "hooks/**",
+    "components/connector-error.tsx", "lib/connector*.{ts,mts}", "lib/connectors.ts", "lib/utils.ts",
+    "scripts/connector-preview/**", "scripts/npm-install.mjs", "scripts/pnpm-install.mjs", "scripts/execution-profile.mjs",
+    "postcss.config.mjs",
   ]),
   {
     files: ["components/ui/**/*.{ts,tsx}", "hooks/use-mobile.ts"],

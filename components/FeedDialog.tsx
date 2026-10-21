@@ -10,10 +10,10 @@ type Props = {
   onClose: () => void;
   profile: Profile;
   sources: Source[];
-  onSave: (feed: CustomFeed) => void;
+  onSave: (feed: CustomFeed) => boolean;
   onPreferences: (patch: Partial<Profile>) => void;
   editingFeed?: CustomFeed | null;
-  onDelete?: (id: string) => void;
+  onDelete?: (id: string) => boolean;
 };
 
 export default function FeedDialog(props: Props) {
@@ -50,8 +50,12 @@ function FeedForm({ onClose, profile, sources, onSave, editingFeed, onDelete, la
       const cleanedName = name.trim();
       if (!cleanedName) { setError("Give this edition a name."); return; }
       if (profile.customFeeds.some((feed) => feed.id !== editingFeed?.id && feed.name.toLowerCase() === cleanedName.toLowerCase())) { setError("An edition already has that name. Try another."); return; }
-      onSave({ id: editingFeed?.id ?? `feed-${crypto.randomUUID()}`, name: cleanedName, companies, topics, exclude: [...new Set(exclusions)] });
-      onClose();
+      if (exclusions.length > 30) { setError("Use at most 30 words or phrases to leave out."); return; }
+      if (exclusions.some(value => value.length > 80)) { setError("Each excluded word or phrase must be 80 characters or fewer."); return; }
+      if (!editingFeed && profile.customFeeds.length >= 30) { setError("You have 30 custom feeds. Edit an existing feed or remove one first."); return; }
+      const saved = onSave({ id: editingFeed?.id ?? `feed-${crypto.randomUUID()}`, name: cleanedName, companies, topics, exclude: [...new Set(exclusions)] });
+      if (saved) onClose();
+      else setError("This feed could not be saved. Resolve any account sync notice, then try again. Your draft is still here.");
     }}>
       <header className="feed-dialog-heading"><div><p className="eyebrow">A little more personal</p><h2 id={`${id}-title`}>{editingFeed ? "Refine your edition" : "Make your own edition"}</h2></div><button className="icon-button" type="button" onClick={onClose} aria-label="Close feed editor"><X size={19} /></button></header>
       <p id={`${id}-intro`} className="section-description">Follow a particular thread of curiosity. New articles find their way here automatically.</p>
@@ -66,6 +70,6 @@ function FeedForm({ onClose, profile, sources, onSave, editingFeed, onDelete, la
       <label className="feed-field">Leave out <span>Optional</span><input value={exclude} onChange={(event) => setExclude(event.target.value)} placeholder="e.g. hiring, events, podcast" maxLength={300} /><small>Words or phrases separated by commas.</small></label>
       <div className="feed-rule-preview"><span>Your edition will include</span><p>Articles from {companies.length ? selectedCompanyNames.join(" or ") : "any company"}{topics.length ? ` about ${topics.join(" or ")}` : ", on any topic"}.{exclusions.length ? ` Excluding articles mentioning ${exclusions.join(", ")}.` : ""}</p><small>Company and topic selections must both match. Recommendations stay within these rules.</small></div>
       {error && <p className="feed-error" id={`${id}-error`} role="alert">{error}</p>}
-      <footer className="feed-dialog-footer">{editingFeed && onDelete ? <button className="text-button feed-delete" type="button" onClick={() => { onDelete(editingFeed.id); onClose(); }}>Delete edition</button> : <button className="text-button" type="button" onClick={onClose}>Cancel</button>}<button className="ink-button" type="submit">{editingFeed ? "Save changes" : "Create edition"}</button></footer>
+      <footer className="feed-dialog-footer">{editingFeed && onDelete ? <button className="text-button feed-delete" type="button" onClick={() => { if (onDelete(editingFeed.id)) onClose(); else setError("This feed could not be deleted. Resolve your account sync notice, then try again."); }}>Delete edition</button> : <button className="text-button" type="button" onClick={onClose}>Cancel</button>}<button className="ink-button" type="submit">{editingFeed ? "Save changes" : "Create edition"}</button></footer>
     </form>;
 }

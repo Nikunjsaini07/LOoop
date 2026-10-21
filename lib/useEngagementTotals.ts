@@ -7,6 +7,7 @@ import { COMMUNITY_EVENT, type CommunityTotals } from "./community-events";
 export function useEngagementTotals(articles: Article[]) {
   const [live, setLive] = useState<Record<string, CommunityTotals>>({});
   const idsKey = [...new Set(articles.map(article => article.id))].sort().join(",");
+  const needsInitialRefresh = articles.some(article => !article.engagement);
 
   useEffect(() => {
     if (!idsKey) return;
@@ -31,13 +32,14 @@ export function useEngagementTotals(articles: Article[]) {
       sequence += 1; // A response started before this action must not overwrite its confirmed totals.
       setLive(previous => ({...previous,[detail.articleId]:detail.stats}));
     };
-    void refresh();
+    // Ranked pages already carry confirmed totals; refresh them on events and the timer.
+    if (needsInitialRefresh) void refresh();
     const timer = window.setInterval(() => void refresh(), 30000);
     window.addEventListener(COMMUNITY_EVENT,changed);
     window.addEventListener("focus",refresh);
     document.addEventListener("visibilitychange",refresh);
     return () => { controller.abort(); window.clearInterval(timer); window.removeEventListener(COMMUNITY_EVENT,changed); window.removeEventListener("focus",refresh); document.removeEventListener("visibilitychange",refresh); };
-  },[idsKey]);
+  },[idsKey, needsInitialRefresh]);
 
   return Object.fromEntries(articles.map(article => [article.id,live[article.id] ?? article.engagement]));
 }

@@ -1,5 +1,5 @@
 {
-  "verifiedAt": "2026-10-20T10:45:22.553455+00:00",
+  "verifiedAt": "2026-10-20T15:11:59.496229+00:00",
   "publishers": {
     "adobe": {
       "company": "Adobe",
@@ -305,6 +305,30 @@
       "asset": "https://www.uber.com/favicon.ico",
       "sha256": "7cb6d23120c81b92824829b8a760b982664b646f915d8ac4d2635e8c34becf96",
       "bytes": 9662
+    },
+    "linear": {
+      "company": "Linear",
+      "file": "linear.ico",
+      "page": "https://linear.app/",
+      "asset": "https://linear.app/favicon.ico?v=2",
+      "sha256": "0e05c8b9f5a4a1b7ef3083d57df0184185e748978f93ca5bd94509280f0e918e",
+      "bytes": 15086
+    },
+    "planetscale": {
+      "company": "PlanetScale",
+      "file": "planetscale.ico",
+      "page": "https://planetscale.com/",
+      "asset": "https://planetscale.com/favicon.ico",
+      "sha256": "6564c5fc0f84ec72c8a97629bfa79d6dc3d1d8012a9d699eeae39006189a116e",
+      "bytes": 1150
+    },
+    "posthog": {
+      "company": "PostHog",
+      "file": "posthog.png",
+      "page": "https://posthog.com/",
+      "asset": "https://posthog.com/favicon-32x32.png?v=6e5ac8d4a5b381b5caa29396fbf7c955",
+      "sha256": "aaae15e2cf376520cb052e4f3a42850b6caeaac279c44809760d3b2c3f9a31f8",
+      "bytes": 575
     }
   }
 }

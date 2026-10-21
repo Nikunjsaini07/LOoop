@@ -4,6 +4,9 @@ export type CompanySummary = {
   id: string;
   name: string;
   blogUrl: string;
+  sourceMode?: "feed" | "listing" | "manual";
+  lastCollectedAt?: string | null;
+  collectionDelayed?: boolean;
   blogCount: number;
   followers: number;
   bookmarks: number;

@@ -15,7 +15,8 @@ import sys
 from urllib.parse import urlsplit, urlunsplit
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT.parent))
+COLLECTOR_ROOT = ROOT.parent if (ROOT.parent / "dailyblogs.py").is_file() else ROOT / "collector"
+sys.path.insert(0, str(COLLECTOR_ROOT))
 from dailyblogs import article_url_key, canonical_url, plain, timestamp
 
 
@@ -102,12 +103,12 @@ def merge(db, incoming, app_rows=(), now=None):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--directory", type=Path, default=ROOT / "outputs/archive-backfill")
-    parser.add_argument("--database", type=Path, default=ROOT.parent / "data/blogs.sqlite3")
+    parser.add_argument("--database", type=Path, default=COLLECTOR_ROOT / "data/blogs.sqlite3")
     parser.add_argument("--apply", action="store_true")
     parser.add_argument("--without-app-aliases", action="store_true")
     args = parser.parse_args()
     directory, database = args.directory.resolve(), args.database.resolve()
-    catalog = {source["id"]: source for source in json.loads((ROOT.parent / "sources.json").read_text(encoding="utf-8"))["sources"]}
+    catalog = {source["id"]: source for source in json.loads((COLLECTOR_ROOT / "sources.json").read_text(encoding="utf-8"))["sources"]}
     incoming, sources = normalize_batches(directory, catalog)
     if not incoming:
         raise ValueError("No collected archive metadata was found")

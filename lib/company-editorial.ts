@@ -1,6 +1,9 @@
 import type { CompanySummary } from "./company-types";
 
 const descriptions: Record<string, string> = {
+  apple: "Research, tools, and systems from the teams working across Apple’s hardware and software.",
+  meta: "Engineering for connection. Distributed systems, open source, and machine learning at scale.",
+  google: "Research meeting practice. Stories about machine learning, infrastructure, and the tools developers build with.",
   stripe: "The engineering behind moving money. APIs, infrastructure, and the details that make payments work.",
   cloudflare: "A closer look at the network: internet infrastructure, security, and systems built for a global scale.",
   netflix: "The systems behind the stream. Distributed infrastructure, data platforms, and the craft of reliability.",
@@ -16,7 +19,7 @@ const descriptions: Record<string, string> = {
 
 export function companyDescription(company: CompanySummary) {
   return descriptions[company.id] ?? (company.topics.length
-    ? `Ideas and lessons from ${company.name}, with writing on ${company.topics.slice(0, 3).map(topic => topic.toLowerCase()).join(", ")}.`
+    ? `Writing from ${company.name} on ${company.topics.slice(0, 3).join(", ")}.`
     : `Explore the ${company.name} blog and follow the team's next idea.`);
 }
 

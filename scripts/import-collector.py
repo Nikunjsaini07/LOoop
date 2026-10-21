@@ -16,6 +16,7 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
+COLLECTOR_ROOT = ROOT.parent if (ROOT.parent / "dailyblogs.py").is_file() else ROOT / "collector"
 REQUIRED_TABLES = {"articles", "profiles", "refresh_locks", "source_refresh"}
 
 
@@ -147,7 +148,7 @@ SELECT COUNT(*) AS sources, MAX(last_success) AS latest_success FROM source_refr
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--source", type=Path, default=ROOT.parent / "data/blogs.sqlite3")
+    parser.add_argument("--source", type=Path, default=COLLECTOR_ROOT / "data/blogs.sqlite3")
     parser.add_argument("--export-only", action="store_true", help="Generate the SQL snapshot without changing local D1")
     parser.add_argument("--verify", action="store_true", help="Verify every source ID, URL and discovery time after import")
     args = parser.parse_args()

@@ -43,6 +43,19 @@
   ],
   "exclude": [
     "node_modules",
-    "examples"
+    "dist",
+    "outputs",
+    "build",
+    "vendor",
+    "examples",
+    "components/ui",
+    "components/connector-error.tsx",
+    "hooks",
+    "lib/connector-context.ts",
+    "lib/connector-contract.mts",
+    "lib/connector-errors.mts",
+    "lib/connector-preview.d.ts",
+    "lib/connectors.ts",
+    "lib/utils.ts"
   ]
 }
