@@ -21,7 +21,6 @@
     "build:production": "node scripts/production.mjs build",
     "deploy:check": "node scripts/production.mjs dry-run",
     "deploy": "node scripts/production.mjs deploy",
-    "release:source": "python scripts/package-release.py",
     "dev:backend": "node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js dev --config wrangler.jsonc --local --persist-to .wrangler/state --ip 127.0.0.1 --port 8787 --inspector-port 0",
     "build:backend": "node scripts/production.mjs build",
     "deploy:backend:check": "node scripts/production.mjs dry-run",
