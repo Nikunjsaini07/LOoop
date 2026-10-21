@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import ArticleDetail from "@/components/ArticleDetail";
 import { safeReturnPath } from "@/lib/auth-path";
-import { loadArticle } from "@/lib/server/store";
+import { cache } from "react";
+import { loadArticle as fetchArticle } from "@/lib/backend";
+
+const loadArticle = cache(fetchArticle);
 
 export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ return_to?: string }> };
@@ -10,7 +13,8 @@ type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ return_t
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const article = await loadArticle(id);
-  return { title: article ? `${article.title} — Readwell` : "Article not found — Readwell", description: article?.summary || "An engineering story, a short abstract, and your personal reading log." };
+  if (!article) notFound();
+  return { title: `${article.title} — Readwell`, description: article.summary || "An engineering story, a short abstract, and your personal reading log." };
 }
 
 export default async function ArticlePage({ params, searchParams }: Props) {

@@ -11,6 +11,8 @@ test('release configuration binds the intended database and origin, and never co
   assert.equal(config.d1_databases[0].database_id, settings.CLOUDFLARE_D1_DATABASE_ID);
   assert.equal(config.vars.CLERK_AUTHORIZED_PARTIES, settings.APP_ORIGIN);
   assert.equal(config.vars.REQUIRE_SCHEDULED_INGESTION, 'true');
+  assert.equal(config.main, 'workers/api.ts');
+  assert.equal(config.name, 'readwell-api');
   assert.ok(!JSON.stringify(config).includes('never-copy-this'));
 });
 test('release rejects test keys, placeholder bindings, invalid names and unsafe return origins', () => {
@@ -28,4 +30,15 @@ test('a stale build cannot be deployed against changed keys or database settings
   assert.notEqual(configDigest(config), configDigest(changed));
   assert.throws(() => verifyBuiltConfig(config, changed), /does not match/);
   assert.throws(() => verifyBuiltConfig({ ...config, d1_databases: [] }, config), /does not match/);
+});
+
+test('first deployment can use development auth only in an explicitly separate preview Worker', () => {
+  const previewSettings = { ...settings, READWELL_DEPLOYMENT_MODE: 'preview', APP_ORIGIN: 'https://readwell-test.vercel.app', NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: 'pk_test_' + Buffer.from('readwell-test.clerk.accounts.dev$').toString('base64') };
+  const config = productionConfig(previewSettings);
+  assert.equal(config.name, 'readwell-api-preview');
+  assert.equal(config.vars.CLERK_AUTHORIZED_PARTIES, previewSettings.APP_ORIGIN);
+  assert.equal(config.vars.REQUIRE_SCHEDULED_INGESTION, 'false');
+  assert.throws(() => productionConfig({ ...previewSettings, READWELL_DEPLOYMENT_MODE: 'production' }), /production/);
+  assert.throws(() => productionConfig({ ...previewSettings, READWELL_WORKER_NAME: 'readwell-api' }), /separate Worker/);
+  assert.throws(() => productionConfig({ ...settings, READWELL_DEPLOYMENT_MODE: 'typo' }), /production or preview/);
 });

@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import CompaniesView from "@/components/CompaniesView";
-import { loadCompanyDirectory } from "@/lib/server/companies";
-import { database } from "@/lib/server/store";
+import { loadCompanyDirectory } from "@/lib/backend";
 import "./companies.css";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +10,5 @@ export const metadata: Metadata = {
 };
 
 export default async function CompaniesPage() {
-  let db: D1Database | undefined;
-  try { db = database(); } catch { /* The collected archive remains browsable offline. */ }
-  return <CompaniesView initial={await loadCompanyDirectory(db)} />;
+  return <CompaniesView initial={await loadCompanyDirectory()} />;
 }

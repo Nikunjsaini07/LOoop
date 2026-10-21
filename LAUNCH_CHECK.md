@@ -1,3 +1,5 @@
+> Historical audit from before the Vercel/Cloudflare split. For the current architecture and deployment instructions see DEPLOYMENT.md. See SPLIT_DEPLOYMENT_CHECK.md for verification of the split.
+
 # Release audit — 21 October 2026
 
 ## Passed

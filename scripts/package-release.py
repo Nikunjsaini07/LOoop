@@ -6,8 +6,8 @@ from pathlib import Path
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-TREES = ['app', 'components', 'db', 'drizzle', 'lib', 'scripts', 'workers', 'public', '.github']
-FILES = ['package.json', 'package-lock.json', 'vite.config.ts', 'next.config.ts', 'tsconfig.json', 'eslint.config.mjs', 'drizzle.config.ts', 'cloudflare-env.d.ts', '.gitignore', '.npmrc', '.nvmrc', '.env.example', '.env.production.example', 'AGENTS.md', 'README.md', 'DEPLOYMENT.md', 'PRODUCTION_SETUP.md', 'AUTH.md', 'INGESTION.md', 'SEMANTIC_FEED.md', 'BACKFILL.md', 'RECOMMENDATIONS.md', 'wrangler.jsonc']
+TREES = ['app', 'backend', 'components', 'db', 'drizzle', 'lib', 'scripts', 'workers', 'public', '.github']
+FILES = ['package.json', 'package-lock.json', 'next.config.ts', 'tsconfig.json', 'eslint.config.mjs', 'drizzle.config.ts', 'cloudflare-env.d.ts', '.gitignore', '.vercelignore', '.npmrc', '.nvmrc', '.env.example', '.env.production.example', 'AGENTS.md', 'README.md', 'DEPLOYMENT.md', 'DEPLOY_NOW.md', 'PRODUCTION_SETUP.md', 'SPLIT_DEPLOYMENT_CHECK.md', 'LAUNCH_CHECK.md', 'AUTH.md', 'INGESTION.md', 'SEMANTIC_FEED.md', 'BACKFILL.md', 'RECOMMENDATIONS.md', 'wrangler.jsonc']
 EXCLUDED_TREES = ['components/ui', 'scripts/connector-preview', 'public/textures', 'public/reference/logos']
 EXCLUDED_FILES = {
     'components/connector-error.tsx', 'lib/connector-context.ts', 'lib/connector-contract.mts', 'lib/connector-errors.mts',

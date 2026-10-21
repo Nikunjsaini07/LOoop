@@ -1,7 +1,5 @@
 # Production setup
 
-The current deployment runbook is [DEPLOYMENT.md](DEPLOYMENT.md). It replaces the earlier prototype setup notes.
+Follow [DEPLOYMENT.md](DEPLOYMENT.md). The website is standard Next.js on Vercel. Its API relay connects to `workers/api.ts` on Cloudflare, using the existing D1 database and Clerk identity service.
 
-Deploy the web/API Worker to Cloudflare Workers, bind the existing `reads` D1 database as `DB`, and configure a Clerk production instance. The existing `readzz-ingestion` Worker is separate and shares that database.
-
-No deployment, remote migration, database import or account configuration is performed by local checks or source packaging.
+Vercel needs the Clerk public key, the API Worker URL and a shared proxy secret. Clerk private keys and Cloudflare account credentials belong on the backend only. No publishing or remote database changes occur during local builds or source packaging.

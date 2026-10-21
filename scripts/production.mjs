@@ -1,8 +1,8 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { parseEnv } from 'node:util';
-import { configDigest, productionConfig, verifyBuiltConfig } from './production-config.mjs';
+import { configDigest, productionConfig } from './production-config.mjs';
 import './sites-env.mjs';
 
 const mode = process.argv[2];
@@ -10,31 +10,28 @@ if (!['check', 'build', 'dry-run', 'deploy'].includes(mode) || process.argv.leng
 const settings = { ...(existsSync('.env.production') ? parseEnv(readFileSync('.env.production', 'utf8')) : {}), ...process.env };
 const config = productionConfig(settings);
 const digest = configDigest(config);
-// Only non-secret, explicitly selected fields go into Wrangler configuration.
 writeFileSync('.wrangler.production.json', JSON.stringify(config, null, 2) + '\n');
 if (mode === 'check') {
-  console.log('Production settings are valid. This checks local configuration only; no deployment or remote database changes were made.');
+  console.log('Backend configuration is valid. No deployment or database changes were made.');
   process.exit(0);
 }
-const childEnv = { ...process.env, READWELL_PRODUCTION: '1', NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: config.vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY, APP_ORIGIN: config.vars.APP_ORIGIN };
-function run(script, args) {
-  const result = spawnSync(process.execPath, [fileURLToPath(new URL(script, import.meta.url)), ...args], {
-    env: childEnv, stdio: 'inherit', windowsHide: true,
+const manifestPath = 'outputs/backend/production-manifest.json';
+function wrangler(args) {
+  // An empty env file prevents local/test settings leaking into production.
+  mkdirSync('outputs/backend', { recursive: true });
+  writeFileSync('outputs/backend/empty.env', '');
+  const result = spawnSync(process.execPath, [fileURLToPath(new URL('../node_modules/wrangler/bin/wrangler.js', import.meta.url)),
+    ...args, '--config', '.wrangler.production.json', '--env-file', 'outputs/backend/empty.env'], {
+    env: { ...process.env, WRANGLER_SEND_METRICS: 'false', WRANGLER_WRITE_LOGS: 'false' }, stdio: 'inherit', windowsHide: true,
   });
   if (result.error) throw result.error;
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
 if (mode === 'build') {
-  run('./run-framework.mjs', ['build']);
-  verifyBuiltConfig(JSON.parse(readFileSync('dist/server/wrangler.json', 'utf8')), config);
-  writeFileSync('dist/production-manifest.json', JSON.stringify({ digest, builtAt: new Date().toISOString() }) + '\n');
-  console.log('Production build verified. Next: npm run deploy:check.');
+  wrangler(['deploy', '--dry-run', '--outdir', 'outputs/backend/bundle']);
+  writeFileSync(manifestPath, JSON.stringify({ digest, builtAt: new Date().toISOString() }) + '\n');
+  console.log('Cloudflare API bundle verified locally. No deployment was performed.');
 } else {
-  if (!existsSync('dist/production-manifest.json') || JSON.parse(readFileSync('dist/production-manifest.json', 'utf8')).digest !== digest) {
-    throw new Error('No matching production build. Run npm run build:production first.');
-  }
-  verifyBuiltConfig(JSON.parse(readFileSync('dist/server/wrangler.json', 'utf8')), config);
-  run('../node_modules/wrangler/bin/wrangler.js', ['deploy', '--config', 'dist/server/wrangler.json',
-    ...(mode === 'dry-run' ? ['--dry-run', '--outdir', 'outputs/production-bundle'] : []),
-  ]);
+  if (!existsSync(manifestPath) || JSON.parse(readFileSync(manifestPath, 'utf8')).digest !== digest) throw new Error('Run npm run build:backend with these production settings first.');
+  wrangler(['deploy', ...(mode === 'dry-run' ? ['--dry-run', '--outdir', 'outputs/backend/bundle'] : [])]);
 }

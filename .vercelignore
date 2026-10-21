@@ -1,0 +1,17 @@
+node_modules
+.git
+.next
+.wrangler
+.sites-runtime
+.agents
+.codex
+.env*
+.dev.vars*
+.wrangler.production.json
+outputs
+dist
+out
+work
+*.sqlite*
+*.pem
+*.tsbuildinfo

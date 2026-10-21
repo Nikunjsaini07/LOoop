@@ -1,66 +1,45 @@
 # Readwell
 
-Engineering stories from company blogs, with search, follows, saved stories, reading logs and a private reading library. Full articles stay with their publishers.
+Engineering stories from company blogs, with search, follows, bookmarks and reading logs.
 
-## Run locally
+## Hosting
 
-Use Node.js 22.13 or newer (Node 22 LTS is the CI baseline).
+- **Vercel:** standard Next.js website, server-rendered pages and a same-origin API relay.
+- **Cloudflare Workers:** API logic in `workers/api.ts` and `backend/routes/`.
+- **Cloudflare D1:** existing `reads` database. Preserve the local archive too.
+- **Clerk:** account sign-in. Only its publishable key is needed on Vercel.
+- **Existing ingestion Worker:** continues collecting public articles independently.
+
+For your first Vercel deployment, follow [DEPLOY_NOW.md](DEPLOY_NOW.md). For production with your own domain, follow [DEPLOYMENT.md](DEPLOYMENT.md). The beta Vinext runtime is no longer used.
+
+## Local development
+
+Use Node 22.13 or newer. Install dependencies with `npm ci`. Keep existing `.env.local` and `.wrangler/state/` files; do not replace them. For a fresh checkout, copy `.env.example` to `.env.local`, enter Clerk development keys, and initialize/import a separate local database before browsing.
 
 ```powershell
-npm ci
-Copy-Item .env.example .env.local
-# Fill in Clerk development keys in .env.local.
+node scripts/setup-local.mjs
+npm run dev:backend
+```
+
+Leave the backend running, then in another terminal in this folder:
+
+```powershell
 npm run dev
 ```
 
-The app opens at http://127.0.0.1:5173. Local D1 state lives in `.wrangler/state/`; retain it to keep your existing archive. A fresh clone needs migrations and article data before database-backed reading works.
+Open http://127.0.0.1:5173. The API emulator runs at http://127.0.0.1:8787. The setup helper writes ignored local connection files and never changes the database or contacts Cloudflare. A local semantic indexing watcher, if wanted, is a separate `npm run semantic:watch` process.
 
-## Check and build
+## Verification
 
 ```powershell
 npm test
 npm run typecheck
 npm run lint
 npm run build
-npm start
 ```
 
-`npm start` previews the compiled Worker locally; it does not host a production website. The portable preview uses Wrangler and the same persisted local database as development. Its preview proxy has a known timeout on one validation-error request; direct built-Worker checks pass. See DEPLOYMENT.md for the verification boundary.
+`npm start` serves the built Next.js website locally and needs the local API running. `node scripts/check-split-http.mjs` verifies the local split with real HTTP requests. No real login or live deployment is certified by these checks.
 
-## Deploy
+`npm run build:backend` validates production backend settings and bundles the Worker without publishing. `npm run deploy:backend` explicitly publishes the API; it does not deploy Vercel or the ingestion Worker and does not migrate the database.
 
-Use **Cloudflare Workers + D1**, with Clerk for accounts. The website, API and static assets deploy together. Scheduled ingestion remains a separate Worker sharing the existing `reads` database.
-
-Follow [DEPLOYMENT.md](DEPLOYMENT.md) for configuration, secrets, database checks, deployment commands, rollback and operations. Production builds reject test keys and placeholder database bindings.
-
-```powershell
-Copy-Item .env.production.example .env.production
-# Fill in the public production settings.
-npm run production:check
-npm run build:production
-npm run deploy:check
-# After setting Worker secrets and checking the database:
-npm run deploy
-```
-
-Deployment is manual. The included CI workflow runs checks and builds without publishing.
-
-## Clean source package
-
-`npm run release:source` produces a ZIP under `outputs/releases/`. It includes application source, tests, migrations, locked dependencies and deployment documentation. It excludes unused starter UI/connectors, old design assets, credentials, databases, dependency folders and build output.
-
-The original collector, design references and private backups outside this app are retained. The ZIP is the recommended source handoff; extract it into a new folder or repository before deployment.
-
-## Product and data
-
-- Public browsing needs no account. Clerk verifies account-specific reading actions.
-- Account data and public contributions commit together in D1; conflict recovery retains both copies.
-- URL state preserves searches, filters and pagination. The library supports search, ordering and recovery.
-- Profile resumes the most recently read or opened story. Opening a publisher link does not mark it read.
-- `/settings` provides data export/reset and optional identity deletion; `/privacy` explains storage.
-- `/api/health` reports archive/source health. `/api/ready` returns 503 when required runtime setup is missing.
-- Recommendation indexing runs outside HTTP requests. See [SEMANTIC_FEED.md](SEMANTIC_FEED.md).
-- Source collection and existing scheduler operations: [INGESTION.md](INGESTION.md).
-- Authentication and account isolation: [AUTH.md](AUTH.md).
-
-The pinned Vinext runtime is a beta release. Local verification is evidence for the checked build, not a substitute for acceptance on the final domain with real accounts and devices.
+`npm run release:source` creates a clean ZIP under `outputs/releases/`, excluding credentials, databases and generated output. Original files and data are retained. CI verifies source without deploying.

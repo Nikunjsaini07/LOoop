@@ -33,6 +33,7 @@ yarn-error.log*
 !.env.example
 !.env.production.example
 .wrangler.production.json
+.dev.vars*
 
 # vercel
 .vercel

@@ -73,7 +73,7 @@ export function isSameOrigin(request: Request): boolean {
   const site = request.headers.get("sec-fetch-site");
   if (site === "cross-site") return false;
   // Server/CLI clients without browser Origin remain usable with authenticated identity.
-  return !origin || origin === new URL(request.url).origin;
+  return !origin || origin === (env.APP_ORIGIN || new URL(request.url).origin);
 }
 
 export function jsonError(message: string, status: number): Response {

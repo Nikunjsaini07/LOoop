@@ -1,125 +1,135 @@
-# Deploy Readwell
+# Deploy Readwell: Vercel + Cloudflare
 
-## What goes where
+The code is split: **Vercel website → private Cloudflare API → existing D1 database**. The existing article collector stays on Cloudflare. No beta Vinext runtime or ChatGPT Sites service is required.
 
-| Part | Destination | Source or output |
-| --- | --- | --- |
-| Website, React client, API, fonts and images | Cloudflare Workers with Static Assets | Build from this folder; deploy `dist/server/wrangler.json` |
-| Stories, profiles, saves, read logs, feed editions | Existing Cloudflare D1 database `reads` | Bind it as `DB`; do not upload local SQLite files |
-| Scheduled article collection | Existing `readzz-ingestion` Cloudflare Worker | `workers/ingestion.ts`; same D1 database |
-| Sign-in and identity | Clerk production application | Production keys, providers, domain and deletion webhook |
-| Semantic index generation | Separate Node/Python maintenance job | `scripts/semantic-index.mjs --remote`; never run model inference inside the web Worker |
+All commands below run from the folder containing `package.json` (`scroll-app` in the original workspace). Keep private local files and `.wrangler/state/`. The migration did not move or replace database contents.
 
-The app imports `cloudflare:workers` and uses D1 bindings. The supported handoff is a Workers deployment. Uploading just `public/`, using a static Pages project, or running a stock Next.js/Vercel build will not run this application.
+## 1. Decide the website address and configure Clerk
 
-The standalone build has no ChatGPT Sites hosting or connector dependency.
+Choose the exact HTTPS address visitors will use. Configure it on your Vercel project. Clerk production setup requires a domain you control; complete its production domain/DNS setup and enable the sign-in methods you want. A `vercel.app` preview with development keys is a test deployment, not this guide's production setup.
 
-## 1. Start from the clean source
+From Clerk's production instance get the publishable `pk_live_...` key and private `sk_live_...` key. Use the same Clerk instance on both hosts.
 
-Run `npm run release:source` in the original project and extract the generated ZIP into a new folder. The archive contains a `readwell/` root directory. Use that directory as your repository/build root.
+- Sign-in path: `/sign-in`
+- Sign-up path: `/sign-up`
+- After sign-out: `/`
+- After sign-in: `/profile`
 
-Install Node 22 LTS (22.13 or newer). From that root:
+References: [Clerk production deployment](https://clerk.com/docs/guides/development/deployment/production), [Vercel domains](https://vercel.com/docs/domains/working-with-domains/add-a-domain).
+
+## 2. Configure and deploy the Cloudflare API
+
+Keep the existing `reads` database and existing ingestion Worker. Do not create an empty replacement database or replay all migrations against an existing archive.
 
 ```powershell
 npm ci
 Copy-Item .env.production.example .env.production
 ```
 
-Fill in the Cloudflare account ID, the **existing reads database ID**, the intended HTTPS origin, and Clerk's live publishable key. IDs and the publishable key are public configuration. The template deliberately has no private credentials.
+Fill in `.env.production`:
 
-For Workers Builds/Git integration, use the same values as build environment variables instead of committing `.env.production`. Set build command `npm ci && npm run build:production` and deploy command `npm run deploy`. Keep automatic deployments disabled until you choose to enable them. The repository CI file included here never deploys.
+| Setting | Value |
+| --- | --- |
+| `CLOUDFLARE_ACCOUNT_ID` | Your intended Cloudflare account ID |
+| `CLOUDFLARE_D1_DATABASE_ID` | UUID of the existing `reads` database |
+| `CLOUDFLARE_D1_DATABASE_NAME` | `reads` |
+| `READWELL_WORKER_NAME` | `readwell-api` |
+| `APP_ORIGIN` | Exact website origin, such as `https://readwell.example.com` |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk production `pk_live_...` key |
 
-## 2. Configure Clerk and Worker secrets
-
-In Clerk, create/configure the production instance, enable the desired login providers, and configure your final domain. Use these app routes:
-
-- Sign-in: `https://YOUR_DOMAIN/sign-in`
-- Sign-up: `https://YOUR_DOMAIN/sign-up`
-- Sign-out destination: `https://YOUR_DOMAIN/`
-
-Run `npm run production:check`. This generates ignored `.wrangler.production.json` with the exact origin allowlist and database binding.
-
-Authenticate Wrangler using `npx wrangler login` locally, or set a scoped `CLOUDFLARE_API_TOKEN` in your CI secret store. Add runtime secrets using the dashboard or interactive commands:
+Existing account/database IDs are in ignored `.env.local`. They are identifiers, not passwords. Confirm that the saved Wrangler login belongs to your intended account:
 
 ```powershell
-npx wrangler secret put CLERK_SECRET_KEY --config .wrangler.production.json
-npx wrangler secret put CLERK_WEBHOOK_SIGNING_SECRET --config .wrangler.production.json
+npx wrangler whoami
+# If that is not your intended account:
+# npx wrangler logout
+# npx wrangler login
+npm run production:check
 ```
 
-Use the **live** Clerk secret key. For the signing secret, configure Clerk's `user.deleted` webhook to `https://YOUR_DOMAIN/api/webhooks/clerk` and copy its signing secret into the Worker secret. Retry delivery after the domain is live. An optional `CLERK_JWT_KEY` secret can enable networkless token verification.
-
-Secrets are Worker runtime configuration; setting only CI build secrets does not configure the deployed Worker. Do not commit private keys, local environment files, databases or backup exports.
-
-## 3. Check the existing database before changing schema
-
-The existing remote archive has already been imported in this project's earlier work. Bind that database; do not create an empty replacement or re-import the entire collector unnecessarily.
-
-Inspect it with a read-only command:
+This generates ignored `.wrangler.production.json` containing public backend configuration only. Inspect the existing schema with a read-only query before deploying:
 
 ```powershell
-npx wrangler d1 execute DB --remote --config .wrangler.production.json --command "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name; SELECT name FROM readzz_migrations ORDER BY name; SELECT COUNT(*) AS articles FROM articles; PRAGMA foreign_key_check;"
+npx wrangler d1 execute DB --remote --config .wrangler.production.json --command "SELECT COUNT(*) AS articles FROM articles; SELECT name FROM sqlite_master WHERE type='table' ORDER BY name; PRAGMA foreign_key_check;"
 ```
 
-The full schema is the committed sequence `drizzle/0000_*.sql` through `0006_*.sql`. It includes semantic generation columns and `reader_reports`. An existing database may not use Wrangler's migration ledger: **do not run the entire sequence against it blindly**. Back it up, inspect actual schema, and apply only verified missing migrations. Base migrations and ALTER TABLE migrations are not all safe to replay.
+The schema must include the committed migrations through `0006_reader_reports.sql`. If readiness reports a missing schema, inspect and back up the database before applying only verified missing migrations. Website deployment never performs a data migration.
 
-A genuinely new database needs the complete ordered schema and company/topic catalog initialization, then article import. This is a separate data migration; the web deploy does not perform it. Use existing reviewed administration scripts rather than request-time table creation.
-
-## 4. Build, inspect and publish
+Check and publish the backend:
 
 ```powershell
 npm test
 npm run typecheck
 npm run lint
-npm run build:production
-npm run deploy:check
-npm run deploy
+npm run build:backend
+npm run deploy:backend
 ```
 
-`build:production` validates public configuration, builds the Worker/client and checks the generated binding. `deploy:check` performs Wrangler's local dry run; it does not publish. `deploy` requires the matching production manifest, preventing an ordinary local build from being released accidentally.
+The backend deploy prints a URL such as `https://readwell-api.YOUR_SUBDOMAIN.workers.dev`. Keep that URL for Vercel. At this point the API intentionally rejects requests until the connection secret is configured.
 
-Deploy from the generated config. It supplies the Worker code and adjacent `dist/client` asset directory together; do not drag-upload individual output folders.
-
-In Cloudflare, add your final custom domain under the web Worker's Settings â†’ Domains & Routes. Its HTTPS origin must exactly match `APP_ORIGIN`. A different origin requires updating production settings and rebuilding. Set production Worker secrets before accepting account traffic.
-
-## 5. Verify on the final domain
-
-- `/`, `/companies`, `/trending`, real article links, styles/fonts and the guest route load.
-- `/api/ready` returns HTTP 200 and `ready: true`. A 503 response names failed setup checks without returning secrets/account rows.
-- Readiness requires the schema, at least one article, live auth settings, a configured deletion signing secret and an ingestion heartbeat newer than 30 minutes. It does not prove OAuth or webhook delivery; test those separately.
-- `/api/health` reports source failures and stale ingestion. It intentionally uses HTTP 200 for degraded collection, so monitor its JSON status as well.
-- Sign in with a real test account; save/follow/log a story, reload, then verify it in a second browser. Confirm sign-out and account isolation.
-- Send a Clerk test deletion event for a disposable test account and confirm successful delivery. Test real phone navigation and keyboard operation.
-
-Local checks cannot certify these live account/domain integrations.
-
-## 6. Keep collection and semantic data current
-
-The existing ingestion Worker runs every five minutes and normally checks due sources on a six-hour interval. Leave it running against the same `reads` database. Website deployment does not redeploy or replace it.
-
-If redeployment is needed, `node scripts/ingestion.mjs --deploy` is an explicit separate operation. That administration helper reads the Cloudflare IDs from ignored `.env.local`; verify they match the web production binding first. See INGESTION.md.
-
-Semantic metadata is computed outside Workers. A maintenance runner needs the Node dependencies, Python/NumPy, the model cache and scoped Cloudflare credentials. The existing semantic helper also reads remote IDs from `.env.local`. Fresh stories remain readable before embedding completes. Index scheduling and its operator are not provisioned by the web deployment.
-
-## 7. Monitoring, backups and rollback
-
-Enable Workers logs (the generated config enables observability), then connect an external monitor to `https://YOUR_DOMAIN/api/ready` and inspect `/api/health` for collection degradation. Choose an owned alert destination and verify a test alert. Store reports require a review owner; creating a row does not send an email.
-
-Before schema/data maintenance, create a full private SQL export:
+In Cloudflare's Worker settings add these **secrets**, or enter them interactively:
 
 ```powershell
-npx wrangler d1 export DB --remote --config .wrangler.production.json --output /PRIVATE_BACKUP_LOCATION/readwell-before-change.sql
+npx wrangler secret put READWELL_PROXY_SECRET --config .wrangler.production.json
+npx wrangler secret put CLERK_SECRET_KEY --config .wrangler.production.json
+npx wrangler secret put CLERK_WEBHOOK_SIGNING_SECRET --config .wrangler.production.json
 ```
 
-Store exports outside the repository in access-controlled off-device storage. Define a daily schedule and retention with your operator; no external backup scheduler is configured by this source package. Restore a backup into a **separate temporary database**, check integrity/foreign keys and counts, and only then plan any real recovery. Never test a restore by overwriting `reads`.
+For `READWELL_PROXY_SECRET`, generate a new random value of at least 32 characters (recommended: 32 random bytes encoded as 64 hex characters), keep it private, and enter the **same value** in Vercel. This is separate from your Cloudflare API token and Clerk keys. Do not reuse the local development connection secret for production.
 
-Cloudflare D1 also provides Time Travel; check your database's retention window before relying on it. Export/recovery references: [D1 export](https://developers.cloudflare.com/d1/best-practices/import-export-data/), [Time Travel](https://developers.cloudflare.com/d1/reference/time-travel/).
+`CLERK_SECRET_KEY` is the live `sk_live_...` key. For the webhook signing secret, create a Clerk endpoint at `https://YOUR_API_WORKER/api/webhooks/clerk`, subscribe to `user.deleted`, and copy its signing secret. The webhook is signature-verified and does not require the proxy secret. Optional `CLERK_JWT_KEY` enables offline verification.
 
-For code rollback, select a previous deployment in Workers deployment history or use `wrangler rollback` for the web Worker. Code rollback does not reverse database migrations, so keep schema changes backward compatible and retain pre-change backups.
+## 3. Deploy the website on Vercel
 
-## Verification boundary
+Use the updated source, not an older release ZIP. Import your repository into Vercel, or run `npx vercel` from this folder and follow its account/project prompts. Add these settings to the project's **Production** environment:
 
-The source targets the pinned Vinext 1.0.0-beta.5 runtime and Cloudflare Vite plugin 1.37.1. Keep the lockfile and test framework upgrades separately. Passing unit/type/lint/build checks and a local deployment dry run do not establish production load capacity, real-account acceptance, alert delivery or remote recovery.
+| Vercel environment variable | Value |
+| --- | --- |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Same live public key used on Cloudflare |
+| `READWELL_API_URL` | Cloudflare API origin, without `/api` at the end |
+| `READWELL_PROXY_SECRET` | Exactly the same private connection secret as Cloudflare |
 
-Local verification on 21 October 2026: the extracted clean package passed 121 tests, type checking and the production build. Wrangler's deployment dry run succeeded (637.31 KiB gzip). All 24 direct built-Worker HTTP acceptance checks passed against the persisted local archive. The separate Wrangler development proxy still timed out on the invalid-page-size GET; direct Worker requests returned the expected 400. Treat this as an unresolved local preview issue, and verify the actual deployed runtime before launch.
+Vercel build settings:
 
-Official platform references: [Cloudflare Vite deployment](https://developers.cloudflare.com/workers/vite-plugin/get-started/), [Vite plugin configuration](https://developers.cloudflare.com/workers/vite-plugin/reference/api/), [Worker secrets](https://developers.cloudflare.com/workers/configuration/secrets/).
+- Framework: **Next.js**
+- Root directory: folder containing this app's `package.json`; `scroll-app` if the parent folder is your repository root, otherwise `.`
+- Install command: `npm ci`
+- Build command: `npm run build`
+- Output directory: leave the Next.js default
+- Node version: **22.x**
+
+Do not select a static export or upload `dist/`. The site uses Next.js server rendering and a server-side API relay. `.vercelignore` excludes private local credentials, databases and backups from CLI uploads. Git ignores them too. Do not put Clerk secret keys or Cloudflare API tokens in Vercel.
+
+Deploy to Production after saving the three environment variables. Environment changes need a new deployment. If using CLI, `npx vercel --prod` performs the production deployment using project settings. Your final domain must match Cloudflare's `APP_ORIGIN` and Clerk's production setup exactly.
+
+Preview deployments require their own backend/origin/auth configuration. Do not allow every `*.vercel.app` origin to access production accounts.
+
+References: [Next.js on Vercel](https://vercel.com/docs/frameworks/full-stack/nextjs), [environment variables](https://vercel.com/docs/environment-variables), [Workers secrets](https://developers.cloudflare.com/workers/configuration/secrets/).
+
+## 4. Verify before sharing
+
+Open the **Vercel website** (not the API Worker URL):
+
+1. `/api/ready` must return HTTP 200 with `ready: true`. Its checks cover schema, archive, production auth configuration, deletion signing secret and a collector heartbeat newer than 30 minutes. Configured keys alone do not prove login/webhook delivery.
+2. Check home, Companies, Trending and a real article. Missing articles should return 404; real backend failures must not appear as an empty library.
+3. Sign in, bookmark a story, reload and confirm it in a second browser. Check sign-out and account isolation.
+4. Send a Clerk test deletion event for a disposable account and confirm delivery.
+
+A direct request to the Cloudflare API without the connection secret returns 401 by design. Use the website's `/api/ready` for monitoring.
+
+The collector is already a separate deployment; this release does not replace its schedule. For existing administration and explicit collector redeployment see [INGESTION.md](INGESTION.md). Semantic indexing also remains a separate maintenance process; fresh articles remain readable before indexing completes.
+
+Daily quotas are not a measured user-capacity guarantee. Monitor Worker CPU time, D1 rows read/written and source health. Existing alerting/backup/recovery limitations are recorded in `LAUNCH_CHECK.md`; schedule owned off-device backups and monitoring before relying on unattended operation.
+
+## Common setup errors
+
+| Symptom | Check |
+| --- | --- |
+| Website API returns 503 | Vercel API URL, both copies of the proxy secret, Worker logs |
+| Signed-out `/api/profile` returns 401 | Expected; this route requires sign-in |
+| Signed-in actions return 401 | Same Clerk instance/public key, live secret, exact authorized website origin |
+| Writes return 403 | Website domain matches `APP_ORIGIN`; use the production domain |
+| `/api/ready` returns 503 | Read its `checks`; do not replace a populated database |
+| Website shows a page-load error | Backend reachability and Vercel function logs |
+
+Rollback code from Vercel and Cloudflare deployment history separately. Code rollback does not undo database migrations. Never overwrite the existing archive or account data to test deployment/recovery.
