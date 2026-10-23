@@ -64,4 +64,10 @@ body:has(.auth-page)>.site-sky{display:none}
 .dark .supabase-error{background:#2b1819;border-color:#5c2025;color:#f87171}
 .supabase-success{padding:10px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:9px;color:#166534;font-size:13px;line-height:1.5}
 .dark .supabase-success{background:#14281d;border-color:#22543d;color:#86efac}
-
+.supabase-oauth-group{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.supabase-oauth-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:8px 12px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--ink);font-size:13px;font-weight:500;cursor:pointer;transition:background 150ms,border-color 150ms}
+.supabase-oauth-btn:hover:not(:disabled){background:var(--tray);border-color:var(--accent)}
+.supabase-oauth-btn:disabled{opacity:.6;cursor:not-allowed}
+.supabase-oauth-btn svg{width:18px;height:18px;flex-shrink:0}
+.supabase-divider{display:flex;align-items:center;gap:12px;margin:6px 0 2px;color:var(--muted);font-size:12px}
+.supabase-divider::before,.supabase-divider::after{content:'';flex:1;height:1px;background:var(--line)}
