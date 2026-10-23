@@ -55,9 +55,8 @@ export function useAuthRequest() {
   return request;
 }
 
-export function ClerkLoading({ children }: { children: ReactNode }) {
-  const ready = useAuthReady();
-  return !ready ? <>{children}</> : null;
+export function ClerkLoading({ _children }: { _children?: ReactNode; children?: ReactNode }) {
+  return null;
 }
 
 export function ClerkFailed({ _children }: { _children?: ReactNode; children?: ReactNode }) {
@@ -65,8 +64,7 @@ export function ClerkFailed({ _children }: { _children?: ReactNode; children?: R
 }
 
 export function ClerkLoaded({ children }: { children: ReactNode }) {
-  const ready = useAuthReady();
-  return ready ? <>{children}</> : null;
+  return <>{children}</>;
 }
 
 export default function AuthProvider({ children }: { children: ReactNode }) {
