@@ -1,5 +1,4 @@
 import { createClerkClient } from '@clerk/backend';
-import { createClient } from '@supabase/supabase-js';
 import { env } from 'cloudflare:workers';
 
 export class AuthenticationError extends Error {}
@@ -23,6 +22,7 @@ export async function getCurrentUser(request: Request, details = false) {
   const supabaseUrl = env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (supabaseUrl && supabaseKey) {
+    const { createClient } = await import('@supabase/supabase-js');
     const supabase = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
     const { data: { user }, error } = await supabase.auth.getUser(token);
     if (error || !user) throw new AuthenticationError('Your session expired. Sign in again.');
@@ -48,6 +48,7 @@ export async function deleteIdentity(verifiedUserId: string) {
   const supabaseUrl = env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseSecret = env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (supabaseUrl && supabaseSecret) {
+    const { createClient } = await import('@supabase/supabase-js');
     const admin = createClient(supabaseUrl, supabaseSecret, { auth: { persistSession: false } });
     await admin.auth.admin.deleteUser(verifiedUserId);
     return;
