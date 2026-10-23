@@ -7,6 +7,7 @@ type RuntimeSettings = {
   origin?: string;
   supabaseUrl?: string;
   supabaseAnonKey?: string;
+  schedulerIntervalMs?: number;
 };
 
 /** Small indexed probes: no account rows or private metadata leave this endpoint. */
@@ -36,7 +37,7 @@ export async function checkReadiness(db: D1Database, settings: RuntimeSettings, 
         && settings.origin && settings.authorizedParties?.split(',').map(value => value.trim()).includes(settings.origin))
     )),
     accountLifecycle: !settings.production || Boolean(settings.supabaseUrl && settings.supabaseAnonKey) || Boolean(settings.webhookSecret),
-    scheduler: !settings.production || Boolean(heartbeat && heartbeat.value <= now && now - heartbeat.value < 30 * 60 * 1000),
+    scheduler: !settings.production || Boolean(heartbeat && heartbeat.value <= now && now - heartbeat.value < (settings.schedulerIntervalMs ?? (30 * 60 * 1000))),
   };
   return { ready: Object.values(checks).every(Boolean), checks };
 }

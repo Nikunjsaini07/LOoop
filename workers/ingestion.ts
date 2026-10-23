@@ -8,7 +8,7 @@ export default {
   // This Worker has no public HTTP route. Only Cloudflare's scheduler invokes it.
   async scheduled(controller: ScheduledController, env: Env) {
     const [sources,classify] = await Promise.all([readSources(env.DB),readTopicClassifier(env.DB)]);
-    const result = await refreshSources(env.DB, sources, {classify});
+    const result = await refreshSources(env.DB, sources, {classify, batchSize: 25});
     await pruneReadingCache(env.DB, Date.now(), 500);
     await env.DB.prepare("INSERT INTO app_state(id,value) VALUES ('ingestion_last_run',?) ON CONFLICT(id) DO UPDATE SET value=excluded.value").bind(Date.now()).run();
     const log = { event: "readzz.ingestion", scheduledAt: new Date(controller.scheduledTime).toISOString(), ...result };

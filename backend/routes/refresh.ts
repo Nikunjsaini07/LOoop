@@ -8,8 +8,8 @@ export async function GET() {
   try {
     const db=database();
     const [states,heartbeat] = await Promise.all([db.prepare("SELECT source_id,last_attempt,last_success,error FROM source_refresh ORDER BY source_id").all(),db.prepare("SELECT value FROM app_state WHERE id='ingestion_last_run'").first<{value:number}>()]);
-    const scheduled=Boolean(heartbeat&&Date.now()-heartbeat.value<30*60*1000);
-    return Response.json({ states: states.results, mode: scheduled?"scheduled":"traffic-driven", intervalHours: 6, scheduled,lastScheduledRun:heartbeat?new Date(heartbeat.value).toISOString():null }, { headers: { "Cache-Control": "no-store" } });
+    const scheduled=Boolean(heartbeat&&Date.now()-heartbeat.value<24*60*60*1000);
+    return Response.json({ states: states.results, mode: scheduled?"scheduled":"traffic-driven", intervalHours: 12, scheduled,lastScheduledRun:heartbeat?new Date(heartbeat.value).toISOString():null }, { headers: { "Cache-Control": "no-store" } });
   } catch { return Response.json({ states: [], mode: "seed", intervalHours: 6, scheduled: false }); }
 }
 

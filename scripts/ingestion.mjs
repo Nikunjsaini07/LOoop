@@ -23,14 +23,14 @@ const config = {
   account_id: settings.CLOUDFLARE_ACCOUNT_ID,
   workers_dev: false,
   preview_urls: false,
-  triggers: { crons: ['*/5 * * * *'] },
+  triggers: { crons: ['0 6,18 * * *'] },
   observability: { enabled: true },
   d1_databases: [{ binding: 'DB', database_name: 'reads', database_id: settings.CLOUDFLARE_D1_DATABASE_ID,
     ...(mode === '--smoke-server' ? { remote: true } : {}) }],
 };
 writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
 if (mode === '--prepare') {
-  console.log(JSON.stringify({ worker: config.name, configPath, schedule: 'Every five minutes; up to four due sources, six-hour normal source interval', publicHttpEndpoint: false }, null, 2));
+  console.log(JSON.stringify({ worker: config.name, configPath, schedule: 'Twice daily at 06:00 and 18:00 UTC', publicHttpEndpoint: false }, null, 2));
 } else {
   const command = mode === '--status'
     ? ['d1', 'execute', 'DB', '--remote', '--json', '--command', "SELECT COUNT(*) AS articles FROM articles; SELECT source_id,last_attempt,last_success,error FROM source_refresh ORDER BY source_id;"]

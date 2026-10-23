@@ -134,7 +134,7 @@ async function refreshSource(db: D1Database, source: Source, state: RefreshState
   }
 }
 
-export async function refreshSources(db: D1Database, sources: Source[], options: { now?: number; fetcher?: Fetcher; classify?:(title:string,summary:string)=>{name:string}[] } = {}): Promise<{ status: string; results: RefreshResult[]; remaining: number }> {
+export async function refreshSources(db: D1Database, sources: Source[], options: { now?: number; fetcher?: Fetcher; classify?:(title:string,summary:string)=>{name:string}[]; batchSize?: number } = {}): Promise<{ status: string; results: RefreshResult[]; remaining: number }> {
   const timestamp = options.now ?? Date.now();
   const now = new Date(timestamp).toISOString();
   const expires = new Date(timestamp + 60000).toISOString();
@@ -146,8 +146,9 @@ export async function refreshSources(db: D1Database, sources: Source[], options:
   const stateById = new Map(states.map((state) => [state.source_id, state]));
   const due = sources.filter((source) => source.mode !== "manual" && (!stateById.get(source.id)?.last_attempt || timestamp - new Date(stateById.get(source.id)!.last_attempt!).getTime() >= (stateById.get(source.id)?.error ? RETRY_MS : INTERVAL_MS)))
     .sort((a, b) => (stateById.get(a.id)?.last_attempt || "").localeCompare(stateById.get(b.id)?.last_attempt || ""));
-  const batch = due.slice(0, BATCH_SIZE);
-  // Four concurrent fixed publishers, bounded bytes and deadlines; no submitted URLs are fetched.
+  const batchSize = options.batchSize ?? BATCH_SIZE;
+  const batch = due.slice(0, batchSize);
+  // Concurrent fixed publishers, bounded bytes and deadlines; no submitted URLs are fetched.
   const results = await Promise.all(batch.map((source) => refreshSource(db, source, stateById.get(source.id), now, fetcher, options.classify)));
   return { status: batch.length ? "complete" : "fresh", results, remaining: due.length - batch.length };
 }
