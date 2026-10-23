@@ -29,10 +29,13 @@ export function useAuth() {
 export function useClerk() {
   return {
     signOut: async (_opts?: { redirectUrl?: string }) => {
+      void _opts;
       await supabase.auth.signOut();
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
       window.location.assign('/');
     },
     openUserProfile: () => {
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
       window.location.assign('/profile');
     },
   };
@@ -55,11 +58,13 @@ export function useAuthRequest() {
   return request;
 }
 
-export function ClerkLoading({ _children }: { _children?: ReactNode; children?: ReactNode }) {
+export function ClerkLoading(_props: { _children?: ReactNode; children?: ReactNode }) {
+  void _props;
   return null;
 }
 
-export function ClerkFailed({ _children }: { _children?: ReactNode; children?: ReactNode }) {
+export function ClerkFailed(_props: { _children?: ReactNode; children?: ReactNode }) {
+  void _props;
   return null;
 }
 

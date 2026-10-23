@@ -156,7 +156,7 @@ def main():
     node = shutil.which("node")
     if not node:
         raise RuntimeError("Node.js 22.13 or newer is required")
-    config = ROOT / "dist/server/wrangler.json"
+    config = ROOT / "wrangler.jsonc" if (ROOT / "wrangler.jsonc").is_file() else ROOT / "dist/server/wrangler.json"
     persist = ROOT / ".wrangler/state"
     articles, statuses = snapshot(source)
     catalog = json.loads((ROOT / "lib/server/seed.json").read_text(encoding="utf-8"))["sources"]

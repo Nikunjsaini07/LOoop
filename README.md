@@ -5,10 +5,9 @@ Engineering stories from company blogs, with search, follows, bookmarks and read
 - Website: Next.js on Vercel.
 - API: Cloudflare Workers.
 - Database: Cloudflare D1.
-- Sign-in: Clerk.
+- Sign-in: Supabase Auth.
 
 Deploy from GitHub branch **main**, with Vercel Root Directory **.**.
-See [DEPLOYMENT.md](DEPLOYMENT.md) for all deployment commands and environment variables.
 
 ## Local development
 

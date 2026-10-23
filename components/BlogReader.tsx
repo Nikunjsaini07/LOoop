@@ -27,7 +27,7 @@ const mergeArticles = (first: Article[], next: Article[]) => [...new Map([...fir
 
 const domain = (url: string) => { try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return "Original publisher"; } };
 
-function StoryCard({ article, returnTo, rank, saved, logged, ready, stats, feedback, onFeedback, onSave, onLog, onTopic, onOriginal }: { article: Article; returnTo: string; rank?: number; saved: boolean; logged: boolean; ready: boolean; stats?: CommunityTotals; feedback?: "useful" | "not-relevant"; onFeedback: (value:"useful"|"not-relevant")=>void; onSave: () => void; onLog: () => void; onTopic: (value: string) => void; onOriginal: () => void }) {
+function StoryCard({ article, returnTo, rank, saved, logged, stats, feedback, onFeedback, onSave, onLog, onTopic, onOriginal }: { article: Article; returnTo: string; rank?: number; saved: boolean; logged: boolean; ready?: boolean; stats?: CommunityTotals; feedback?: "useful" | "not-relevant"; onFeedback: (value:"useful"|"not-relevant")=>void; onSave: () => void; onLog: () => void; onTopic: (value: string) => void; onOriginal: () => void }) {
   const excerpt = publisherExcerpt(article);
   const historical = article.recommendationLane === "archive" && rank === undefined;
   return <article id={`story-${article.id}`} className={`article-card tray${rank!==undefined ? " ranked-story" : ""}${historical ? " archive-story" : ""}`}>

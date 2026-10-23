@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "./PageLink";
-import { ArrowLeft, ArrowRight, ArrowUpRight, Bookmark, BookOpenCheck, Check, LoaderCircle } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowUpRight, Bookmark, BookOpenCheck, Check } from "lucide-react";
 import { useReadingProfile } from "@/lib/useReadingProfile";
 import type { Article } from "@/lib/types";
 import CompanyLogo from "./CompanyLogo";
