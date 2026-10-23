@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useSyncExternalStore, type FormEvent } from 'react';
-import { ArrowLeft, ArrowRight, Bookmark, LoaderCircle, RefreshCw } from 'lucide-react';
+import { ArrowLeft, ArrowRight, LoaderCircle, RefreshCw } from 'lucide-react';
 import Link from './PageLink';
 import BrandLogo from './BrandLogo';
 import ThemeToggle from './ThemeToggle';
@@ -119,12 +119,12 @@ export default function AuthScreen({ mode: initialMode }: { mode: 'sign-in' | 's
         <ThemeToggle />
       </header>
       <div className="auth-content">
-        <Link className="auth-back" href={browseTo}><ArrowLeft size={15} aria-hidden="true" />Back to reading</Link>
-        <section className="auth-card" aria-labelledby="auth-title">
-          <span className="auth-bookmark" aria-hidden="true"><Bookmark size={20} strokeWidth={1.5} /></span>
-          <p className="auth-eyebrow">Your reading space</p>
-          <h1 id="auth-title">{signingIn ? 'Welcome back.' : 'A shelf of your own.'}</h1>
-          <p className="auth-intro">Save good stories, follow your favorite companies, and pick up where you left off.</p>
+        <Link className="auth-back" href={browseTo}><ArrowLeft size={14} aria-hidden="true" />Back to reading</Link>
+        <div className="auth-card-tray tray">
+          <section className="auth-card sheet" aria-labelledby="auth-title">
+            <div className="issue-pill auth-pill"><span></span>Your reading space</div>
+            <h1 id="auth-title">{signingIn ? 'Welcome back.' : 'A shelf of your own.'}</h1>
+            <p className="auth-intro">Save good stories, follow your favorite companies, and pick up where you left off.</p>
           
           <div className="auth-form">
             <ClerkLoading><AuthLoading /></ClerkLoading>
@@ -206,7 +206,8 @@ export default function AuthScreen({ mode: initialMode }: { mode: 'sign-in' | 's
             </ClerkLoaded>
           </div>
         </section>
-        <Link className="auth-guest" href={browseTo}>Just here to read? <span>Browse stories<ArrowRight size={15} aria-hidden="true" /></span></Link>
+      </div>
+      <Link className="auth-guest" href={browseTo}>Just here to read? <span>Browse stories<ArrowRight size={14} aria-hidden="true" /></span></Link>
         <p className="auth-privacy">Your reading library is private. <Link href="/privacy">Privacy details</Link></p>
       </div>
     </main>
