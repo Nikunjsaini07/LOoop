@@ -378,7 +378,8 @@ export function useReadingProfile() {
   }, [commit]);
 
   const toggleBookmark = useCallback((article: Article) => {
-    if (!isReady.current || !requireAccount({ kind: "bookmark", id: article.id, active: !current.current.bookmarks.includes(article.id) })) return false;
+    if (!requireAccount({ kind: "bookmark", id: article.id, active: !current.current.bookmarks.includes(article.id) })) return false;
+    if (!isReady.current) return false;
     const existing = current.current;
     const saved = existing.bookmarks.includes(article.id);
     const next = { ...existing, bookmarks: saved ? existing.bookmarks.filter((id) => id !== article.id) : [...existing.bookmarks, article.id] };
@@ -387,13 +388,15 @@ export function useReadingProfile() {
 
   // Read status is explicitly reported by the reader, independently of link opens.
   const toggleReadLog = useCallback((article: Article) => {
-    if (!isReady.current || !requireAccount({ kind: "read", id: article.id, active: !current.current.readLogs.some(log => log.articleId === article.id) })) return false;
+    if (!requireAccount({ kind: "read", id: article.id, active: !current.current.readLogs.some(log => log.articleId === article.id) })) return false;
+    if (!isReady.current) return false;
     try { return commit(toggleProfileReadLog(current.current, article.id)); }
     catch (error) { setMutationError(error instanceof Error ? error.message : "Your reading log could not be updated."); return false; }
   }, [commit, requireAccount]);
 
   const rateRecommendation = useCallback((article: Article, value: "useful" | "not-relevant") => {
-    if (!isReady.current || !requireAccount({ kind: "feedback", id: article.id, active: true, value })) return false;
+    if (!requireAccount({ kind: "feedback", id: article.id, active: true, value })) return false;
+    if (!isReady.current) return false;
     const ratings = current.current.recommendationFeedback ?? [];
     const previous = ratings.find(item => item.articleId === article.id);
     const rest = ratings.filter(item => item.articleId !== article.id);
