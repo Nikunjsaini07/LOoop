@@ -2,8 +2,7 @@ import { getCurrentUser, AuthenticationError } from "@/lib/server/auth";
 import { emptyProfile,sanitizeProfile,ValidationError } from "@/lib/server/core";
 import { database,isSameOrigin,jsonError } from "@/lib/server/store";
 import { feedInput,queryFeed,FeedExpiredError } from "@/lib/server/feed-query";
-import { refreshStaleSources } from "@/lib/server/refresh";
-import { waitUntil } from "cloudflare:workers";
+
 import { readSources } from "@/lib/server/catalog";
 import { FeedRateLimitError } from "@/lib/server/feed-budget";
 import { withDatabaseRetry } from "@/lib/server/database-retry";
@@ -38,8 +37,11 @@ async function respond(request:Request,posted:boolean) {
     }
     const input=feedInput(query,profile,requested||new Date().toISOString());
     const result=await withDatabaseRetry(()=>queryFeed(db,input,catalog,{pageSize,page:pageNumber,edition:query.get('edition'),cursor:query.get('cursor')==='0'?null:query.get('cursor'),owner:user?`account:${user.userId}`:'guest',clientKey:user?`account:${user.userId}`:`network:${request.headers.get('cf-connecting-ip') || 'local'}`}));
-    waitUntil(refreshStaleSources().catch(()=>undefined));
-    return Response.json(result,{headers:{'Cache-Control':'private, no-store','Vary':'Authorization, Cookie'}});
+    const isGuest = !user && !posted;
+    const cacheControl = isGuest
+      ? 'public, max-age=60, s-maxage=300, stale-while-revalidate=600'
+      : 'private, no-store';
+    return Response.json(result, { headers: { 'Cache-Control': cacheControl, 'Vary': 'Authorization, Cookie' } });
   }catch(error){
     if(error instanceof AuthenticationError)return jsonError(error.message,401);
     if(error instanceof FeedRateLimitError)return Response.json({error:error.message},{status:429,headers:{'Retry-After':'60','Cache-Control':'no-store'}});

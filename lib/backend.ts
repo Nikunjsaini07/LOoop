@@ -21,7 +21,14 @@ export async function backendFetch(path: string, init: RequestInit = {}) {
   if (url.origin !== origin || !url.pathname.startsWith('/api/')) throw new Error('Invalid backend path');
   const headers = new Headers(init.headers);
   headers.set('X-Readwell-Proxy-Secret', secret);
-  return fetch(url, { ...init, headers, cache: 'no-store', redirect: 'manual', signal: init.signal ?? AbortSignal.timeout(25000) });
+  const isPublicGet = (!init.method || init.method === 'GET') && !headers.has('Authorization');
+  return fetch(url, {
+    ...init,
+    headers,
+    redirect: 'manual',
+    signal: init.signal ?? AbortSignal.timeout(25000),
+    ...(isPublicGet ? { next: { revalidate: 180 } } : { cache: 'no-store' }),
+  });
 }
 
 export async function backendJson<T>(path: string): Promise<T> {

@@ -56,7 +56,9 @@ export async function proxyApi(request: Request) {
     result.headers.delete('Content-Length');
     result.headers.delete('Set-Cookie');
     result.headers.delete('X-Readwell-Proxy-Secret');
-    result.headers.set('Cache-Control', 'private, no-store');
+    if (!response.headers.get('Cache-Control')?.includes('public')) {
+      result.headers.set('Cache-Control', 'private, no-store');
+    }
     return result;
   } catch {
     return fail('The article service is temporarily unavailable. Please try again.', 503);
