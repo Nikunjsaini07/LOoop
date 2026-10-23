@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { useClerk } from '@clerk/react';
-import { useAuthRequest } from './AuthProvider';
+import { useClerk, useAuthRequest } from './AuthProvider';
 import { useReadingProfile } from '@/lib/useReadingProfile';
 import { downloadJson } from '@/lib/download-json';
 import SiteHeader from './SiteHeader';

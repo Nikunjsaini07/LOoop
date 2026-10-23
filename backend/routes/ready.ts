@@ -12,6 +12,8 @@ export async function GET() {
       webhookSecret: env.CLERK_WEBHOOK_SIGNING_SECRET || process.env.CLERK_WEBHOOK_SIGNING_SECRET,
       authorizedParties: env.CLERK_AUTHORIZED_PARTIES || process.env.CLERK_AUTHORIZED_PARTIES,
       origin: env.APP_ORIGIN,
+      supabaseUrl: env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL,
+      supabaseAnonKey: env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     });
     return Response.json(result, { status: result.ready ? 200 : 503, headers: { 'Cache-Control': 'no-store' } });
   } catch {

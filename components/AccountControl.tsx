@@ -1,5 +1,5 @@
 'use client';
-import { useAuth, useClerk } from '@clerk/react';
+import { useAuth, useClerk } from '@/components/AuthProvider';
 import { useEffect, useId, useRef, useState, type MouseEvent } from 'react';
 import Link from './PageLink';
 import { ChevronDown, LogOut, UserRound, Settings }  from 'lucide-react';

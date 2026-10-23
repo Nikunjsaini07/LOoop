@@ -1,6 +1,6 @@
 'use client';
 
-import { useAuth } from '@clerk/react';
+import { useAuth } from '@/components/AuthProvider';
 import { useEffect, type ReactNode } from 'react';
 import { signInPath } from '@/lib/auth-path';
 

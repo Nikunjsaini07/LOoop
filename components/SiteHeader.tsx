@@ -3,7 +3,7 @@
 import type { MouseEvent } from "react";
 import Link from "./PageLink";
 import BrandLogo from "./BrandLogo";
-import { useAuth } from "@clerk/react";
+import { useAuth } from "@/components/AuthProvider";
 import { signInPath } from "@/lib/auth-path";
 import AccountControl from "./AccountControl";
 import ThemeToggle from "./ThemeToggle";

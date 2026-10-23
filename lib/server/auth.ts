@@ -1,4 +1,5 @@
 import { createClerkClient } from '@clerk/backend';
+import { createClient } from '@supabase/supabase-js';
 import { env } from 'cloudflare:workers';
 
 export class AuthenticationError extends Error {}
@@ -14,11 +15,22 @@ function clerkSettings() {
 }
 
 export async function getCurrentUser(request: Request, details = false) {
-  // The React client obtains a fresh Clerk session token for every API request.
-  // Cookie/header identities from the old hosting provider are never accepted.
   const authorization = request.headers.get('authorization');
   if (!authorization) return null;
   if (!/^Bearer \S+$/i.test(authorization)) throw new AuthenticationError('Invalid session');
+  const token = authorization.replace(/^Bearer\s+/i, '');
+
+  const supabaseUrl = env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (supabaseUrl && supabaseKey) {
+    const supabase = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    if (error || !user) throw new AuthenticationError('Your session expired. Sign in again.');
+    const email = user.email ?? '';
+    const fullName = (user.user_metadata?.full_name as string) || null;
+    return { userId: user.id, email, fullName, displayName: fullName || email || 'Reader' };
+  }
+
   const settings = clerkSettings();
   const clerk = createClerkClient(settings);
   const verified = await clerk.authenticateRequest(new Request(request.url, {
@@ -33,5 +45,12 @@ export async function getCurrentUser(request: Request, details = false) {
 }
 
 export async function deleteIdentity(verifiedUserId: string) {
+  const supabaseUrl = env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseSecret = env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (supabaseUrl && supabaseSecret) {
+    const admin = createClient(supabaseUrl, supabaseSecret, { auth: { persistSession: false } });
+    await admin.auth.admin.deleteUser(verifiedUserId);
+    return;
+  }
   await createClerkClient(clerkSettings()).users.deleteUser(verifiedUserId);
 }

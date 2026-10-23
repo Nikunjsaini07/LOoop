@@ -5,6 +5,8 @@ type RuntimeSettings = {
   webhookSecret?: string;
   authorizedParties?: string;
   origin?: string;
+  supabaseUrl?: string;
+  supabaseAnonKey?: string;
 };
 
 /** Small indexed probes: no account rows or private metadata leave this endpoint. */
@@ -25,10 +27,15 @@ export async function checkReadiness(db: D1Database, settings: RuntimeSettings, 
     database: true,
     schema: true,
     archive: Boolean(article),
-    authentication: Boolean(settings.secretKey && settings.publishableKey && settings.authorizedParties)
-      && (!settings.production || Boolean(settings.secretKey?.startsWith('sk_live_') && settings.publishableKey?.startsWith('pk_live_')
-        && settings.origin && settings.authorizedParties?.split(',').map(value => value.trim()).includes(settings.origin))),
-    accountLifecycle: !settings.production || Boolean(settings.webhookSecret),
+    authentication: Boolean(
+      (settings.supabaseUrl && settings.supabaseAnonKey) ||
+      (settings.secretKey && settings.publishableKey && settings.authorizedParties)
+    ) && (!settings.production || Boolean(
+      (settings.supabaseUrl && settings.supabaseAnonKey) ||
+      (settings.secretKey?.startsWith('sk_live_') && settings.publishableKey?.startsWith('pk_live_')
+        && settings.origin && settings.authorizedParties?.split(',').map(value => value.trim()).includes(settings.origin))
+    )),
+    accountLifecycle: !settings.production || Boolean(settings.supabaseUrl && settings.supabaseAnonKey) || Boolean(settings.webhookSecret),
     scheduler: !settings.production || Boolean(heartbeat && heartbeat.value <= now && now - heartbeat.value < 30 * 60 * 1000),
   };
   return { ready: Object.values(checks).every(Boolean), checks };

@@ -1,16 +1,42 @@
 'use client';
 
-import { ClerkProvider, useAuth, useClerk } from '@clerk/react';
-import { createContext, useCallback, useContext, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { supabase } from '@/lib/supabase';
 import { signInPath } from '@/lib/auth-path';
 import { rememberIntent, type ReadingIntent } from '@/lib/reading-intent';
+import type { Session, User } from '@supabase/supabase-js';
 
 type AuthRequest = (url: string, init?: RequestInit) => Promise<Response>;
 const AuthRequestContext = createContext<AuthRequest | null>(null);
 const AuthReadyContext = createContext(false);
 const AccountIdContext = createContext<string | null | undefined>(undefined);
+const AuthUserContext = createContext<User | null>(null);
+
 export function useAuthReady() { return useContext(AuthReadyContext); }
 export function useAccountId() { return useContext(AccountIdContext); }
+export function useCurrentUser() { return useContext(AuthUserContext); }
+
+export function useAuth() {
+  const isLoaded = useContext(AuthReadyContext);
+  const userId = useContext(AccountIdContext);
+  return {
+    isLoaded,
+    isSignedIn: Boolean(userId),
+    userId: userId ?? null,
+  };
+}
+
+export function useClerk() {
+  return {
+    signOut: async (_opts?: { redirectUrl?: string }) => {
+      await supabase.auth.signOut();
+      window.location.assign('/');
+    },
+    openUserProfile: () => {
+      window.location.assign('/profile');
+    },
+  };
+}
 
 export function useRequireAccount() {
   const { isLoaded, isSignedIn } = useAuth();
@@ -29,37 +55,72 @@ export function useAuthRequest() {
   return request;
 }
 
-function SessionBoundary({ children }: { children: ReactNode }) {
-  const { isLoaded, userId, sessionId, getToken } = useAuth();
-  const clerk = useClerk();
+export function ClerkLoading({ children }: { children: ReactNode }) {
+  const ready = useAuthReady();
+  return !ready ? <>{children}</> : null;
+}
+
+export function ClerkFailed({ _children }: { _children?: ReactNode; children?: ReactNode }) {
+  return null;
+}
+
+export function ClerkLoaded({ children }: { children: ReactNode }) {
+  const ready = useAuthReady();
+  return ready ? <>{children}</> : null;
+}
+
+export default function AuthProvider({ children }: { children: ReactNode }) {
+  const [ready, setReady] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    supabase.auth.getSession().then(({ data }) => {
+      if (!mounted) return;
+      setSession(data.session);
+      setReady(true);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+      if (!mounted) return;
+      setSession(currentSession);
+      setReady(true);
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
   const request = useCallback<AuthRequest>(async (url, init) => {
-    if (!isLoaded) throw new Error('Your session is still loading');
+    if (!ready) throw new Error('Your session is still loading');
     if (new URL(url, window.location.origin).origin !== window.location.origin) throw new Error('Account requests must stay on Readwell');
-    // A queued save from the previous account must never obtain the new account's token.
-    if (clerk.session?.id !== (sessionId ?? undefined)) throw new Error('Your reading account changed');
-    const token = userId ? await getToken() : null;
-    if (clerk.session?.id !== (sessionId ?? undefined)) throw new Error('Your reading account changed');
+    
+    // Always get the freshest session token from Supabase
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    const userId = data.session?.user?.id;
+
     if (userId && !token) throw new Error('Your session needs to be refreshed');
     const headers = new Headers(init?.headers);
     if (token) headers.set('Authorization', `Bearer ${token}`);
     const response = await fetch(url, { ...init, headers, credentials: 'same-origin' });
-    // A signed-in account with an expired/rejected session must not become a guest cache.
     if (userId && response.status === 401) throw new Error('Your session expired. Sign in again.');
     return response;
-  }, [clerk, isLoaded, sessionId, userId, getToken]);
+  }, [ready]);
 
-  return <AuthReadyContext.Provider value={isLoaded}>
-    <AccountIdContext.Provider value={isLoaded ? userId ?? null : undefined}>
-      <AuthRequestContext.Provider key={sessionId ?? 'guest'} value={request}>{children}</AuthRequestContext.Provider>
-    </AccountIdContext.Provider>
-  </AuthReadyContext.Provider>;
-}
+  const userId = ready ? session?.user?.id ?? null : undefined;
 
-export default function AuthProvider({ children }: { children: ReactNode }) {
-  return <ClerkProvider publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY!}
-    signInUrl="/sign-in" signUpUrl="/sign-up" afterSignOutUrl="/"
-    signInFallbackRedirectUrl="/profile" signUpFallbackRedirectUrl="/profile"
-    appearance={{ options: { unsafe_disableDevelopmentModeWarnings: process.env.NODE_ENV === 'development' }, variables: { colorPrimary: 'var(--control-selected)', colorPrimaryForeground: 'var(--control-selected-ink)', colorBackground: 'var(--paper)', colorForeground: 'var(--ink)', colorMuted: 'var(--tray)', colorMutedForeground: 'var(--muted)', fontFamily: 'Geist, Arial, sans-serif', borderRadius: '12px' }, elements: { rootBox: { width: '100%' }, cardBox: { width: '100%', maxWidth: '400px', boxShadow: 'none', border: '1px solid var(--line)' }, card: { boxShadow: 'none', border: '1px solid var(--line)' }, headerTitle: { fontFamily: 'Cal Sans, Arial, sans-serif', fontWeight: 400 }, formButtonPrimary: 'readwell-auth-button' } }}>
-    <SessionBoundary>{children}</SessionBoundary>
-  </ClerkProvider>;
+  return (
+    <AuthReadyContext.Provider value={ready}>
+      <AccountIdContext.Provider value={userId}>
+        <AuthUserContext.Provider value={session?.user ?? null}>
+          <AuthRequestContext.Provider key={session?.user?.id ?? 'guest'} value={request}>
+            {children}
+          </AuthRequestContext.Provider>
+        </AuthUserContext.Provider>
+      </AccountIdContext.Provider>
+    </AuthReadyContext.Provider>
+  );
 }

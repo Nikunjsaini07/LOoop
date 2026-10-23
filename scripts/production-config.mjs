@@ -16,10 +16,14 @@ export function productionConfig(settings) {
     || /^(localhost|127\.|0\.|\[|.*\.local$)/i.test(origin.hostname) || !origin.hostname.includes('.')) {
     throw new Error('APP_ORIGIN must be a public HTTPS origin without a path, query or credentials.');
   }
+  const supabaseUrl = settings.NEXT_PUBLIC_SUPABASE_URL || settings.SUPABASE_URL;
+  const supabaseAnon = settings.NEXT_PUBLIC_SUPABASE_ANON_KEY || settings.SUPABASE_ANON_KEY;
   const key = settings.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ?? '';
-  const host = Buffer.from(key.slice(8), 'base64').toString('utf8');
-  if (!key.startsWith(preview ? 'pk_test_' : 'pk_live_') || !/^[a-z0-9.-]+\$$/i.test(host)) {
-    throw new Error(preview ? 'Preview requires your real Clerk development pk_test_ key.' : 'Set NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY to your real Clerk production pk_live_ key. Test keys require explicit preview mode.');
+  if (!supabaseUrl) {
+    const host = Buffer.from(key.slice(8), 'base64').toString('utf8');
+    if (!key.startsWith(preview ? 'pk_test_' : 'pk_live_') || !/^[a-z0-9.-]+\$$/i.test(host)) {
+      throw new Error(preview ? 'Preview requires your real Clerk development pk_test_ key.' : 'Set NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY to your real Clerk production pk_live_ key. Test keys require explicit preview mode.');
+    }
   }
   const name = settings.READWELL_WORKER_NAME || (preview ? 'readwell-api-preview' : 'readwell-api');
   if (!/^[a-z][a-z0-9-]{0,62}$/.test(name)) throw new Error('READWELL_WORKER_NAME must be a lowercase Worker name.');
@@ -31,7 +35,13 @@ export function productionConfig(settings) {
     compatibility_date: '2026-05-15', compatibility_flags: ['nodejs_compat'],
     workers_dev: true, preview_urls: false,
     observability: { enabled: true },
-    vars: { NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: key, CLERK_AUTHORIZED_PARTIES: origin.origin, APP_ORIGIN: origin.origin, REQUIRE_SCHEDULED_INGESTION: preview ? 'false' : 'true' },
+    vars: {
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: key,
+      CLERK_AUTHORIZED_PARTIES: origin.origin,
+      APP_ORIGIN: origin.origin,
+      REQUIRE_SCHEDULED_INGESTION: preview ? 'false' : 'true',
+      ...(supabaseUrl ? { SUPABASE_URL: supabaseUrl, SUPABASE_ANON_KEY: supabaseAnon } : {}),
+    },
     d1_databases: [{ binding: 'DB', database_name: databaseName, database_id: database, migrations_dir: 'drizzle' }],
   };
 }
