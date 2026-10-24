@@ -10,11 +10,18 @@ export async function renderReader(initialView: ReaderView, search: Record<strin
   for (const [key, value] of Object.entries(search)) if (typeof value === 'string') params.set(key, value);
   const location = readingLocation(params);
   if (initialView === 'profile') {
-    const response = await backendFetch('/api/sources');
-    if (!response.ok) throw new Error('The reading service is temporarily unavailable.');
-    const result = await response.json() as { sources: Source[] };
+    let sourcesList: Source[] = [];
+    try {
+      const response = await backendFetch('/api/sources');
+      if (response.ok) {
+        const result = (await response.json()) as { sources: Source[] };
+        sourcesList = result.sources || [];
+      }
+    } catch {
+      // Keep resilient even during startup
+    }
     const snapshot = new Date().toISOString();
-    return <BlogReader initialLocation={location} initialView="profile" initial={{ articles: [], sources: result.sources, total: 0, hasMore: false, nextCursor: null, snapshot, updatedAt: snapshot }} />;
+    return <BlogReader initialLocation={location} initialView="profile" initial={{ articles: [], sources: sourcesList, total: 0, hasMore: false, nextCursor: null, snapshot, updatedAt: snapshot }} />;
   }
   const query = new URLSearchParams({ pageSize: '12', page: String(location.page), period: location.period,
     mode: initialView === 'trending' ? 'trending' : ['latest', 'following'].includes(location.feed) ? location.feed : 'personal' });

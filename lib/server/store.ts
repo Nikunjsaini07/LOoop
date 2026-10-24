@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { env } from "./env";
 import type { Article, Source } from "../types";
 import seedData from "./seed.json";
 import { writeArticles } from "./article-writer";
@@ -85,8 +85,11 @@ export function isSameOrigin(request: Request): boolean {
   const origin = request.headers.get("origin");
   const site = request.headers.get("sec-fetch-site");
   if (site === "cross-site") return false;
-  // Server/CLI clients without browser Origin remain usable with authenticated identity.
-  return !origin || origin === (env.APP_ORIGIN || new URL(request.url).origin);
+  const expectedOrigin =
+    (typeof process !== "undefined" && process.env?.APP_ORIGIN) ||
+    (typeof env !== "undefined" && (env as Record<string, unknown>).APP_ORIGIN as string | undefined) ||
+    new URL(request.url).origin;
+  return !origin || origin === expectedOrigin;
 }
 
 export function jsonError(message: string, status: number): Response {

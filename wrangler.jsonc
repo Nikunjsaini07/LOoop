@@ -9,6 +9,9 @@
     "APP_ORIGIN": "http://127.0.0.1:5173"
   },
   "observability": { "enabled": true },
+  "triggers": {
+    "crons": ["0 6 * * *"]
+  },
   "d1_databases": [{
     "binding": "DB",
     // Keep this identity: the existing local archive is stored under this ID.

@@ -72,10 +72,12 @@ export default function AuthScreen({ mode: initialMode }: { mode: 'sign-in' | 's
         if (signInError) throw signInError;
         window.location.assign(returnTo || '/');
       } else {
+        const callbackUrl = `${window.location.origin}/auth/callback?return_to=${encodeURIComponent(returnTo || '/')}`;
         const { data, error: signUpError } = await supabase.auth.signUp({
           email: email.trim(),
           password,
           options: {
+            emailRedirectTo: callbackUrl,
             data: {
               full_name: fullName.trim(),
               name: fullName.trim(),
@@ -104,7 +106,7 @@ export default function AuthScreen({ mode: initialMode }: { mode: 'sign-in' | 's
     setBusy(true);
 
     try {
-      const redirectTo = `${window.location.origin}${returnTo || '/'}`;
+      const redirectTo = `${window.location.origin}/auth/callback?return_to=${encodeURIComponent(returnTo || '/')}`;
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
