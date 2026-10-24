@@ -2,12 +2,25 @@ import { env } from "cloudflare:workers";
 import type { Article, Source } from "../types";
 import seedData from "./seed.json";
 import { writeArticles } from "./article-writer";
+import { createNeonDatabase, type NeonD1Database } from "./neon-db";
 
 export const sources = seedData.sources as Source[];
 export const seedArticles = seedData.articles as Article[];
 export const seededAt = seedData.updatedAt;
 
+let neonDbInstance: NeonD1Database | null = null;
+
 export function database(): D1Database {
+  const connectionString =
+    (typeof env !== "undefined" && ((env as unknown as Record<string, unknown>).DATABASE_URL as string | undefined)) ||
+    (typeof process !== "undefined" && process.env?.DATABASE_URL);
+
+  if (connectionString) {
+    if (!neonDbInstance) {
+      neonDbInstance = createNeonDatabase(connectionString);
+    }
+    return neonDbInstance as unknown as D1Database;
+  }
   if (!env.DB) throw new Error("Reading account storage is temporarily unavailable");
   return env.DB;
 }

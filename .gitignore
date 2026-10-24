@@ -56,6 +56,10 @@ next-env.d.ts
 /.sites-runtime/
 /.agents/
 /.codex/
+AGENTS.md
+CLAUDE.md
+scripts/migrate-to-neon.mjs
+scripts/setup-pg-functions.mjs
 /outputs/
 /work/
 *.tsbuildinfo

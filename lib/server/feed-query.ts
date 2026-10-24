@@ -80,7 +80,7 @@ popular AS (
 eligible AS (
   SELECT a.*,COALESCE(pop.reads,0) AS reads,COALESCE(pop.saves,0) AS saves,COALESCE(pop.popularity,0) AS popularity,
     MAX(0,julianday(json_extract(p,'$.snapshot'))-julianday(COALESCE(a.published_at,a.discovered_at))) AS age_days,
-    EXISTS(SELECT 1 FROM logs WHERE article_id=a.id) AS already_read,
+    CASE WHEN EXISTS(SELECT 1 FROM logs WHERE article_id=a.id) THEN 1 ELSE 0 END AS already_read,
     CASE WHEN json_extract(p,'$.mode')='personal' AND json_array_length(p,'$.readLogs')>0
       THEN COALESCE((SELECT SUM(r.affinity) FROM article_topics at JOIN read_topics r ON r.topic_id=at.topic_id WHERE at.article_id=a.id),0) ELSE 0 END AS read_affinity,
     CASE WHEN json_extract(p,'$.mode')='personal' AND json_array_length(p,'$.readLogs')>0
@@ -89,7 +89,7 @@ eligible AS (
       THEN (SELECT COUNT(*) FROM article_topics at JOIN topics t ON t.id=at.topic_id WHERE at.article_id=a.id AND t.name IN (SELECT value FROM json_each(p,'$.interests'))) ELSE 0 END AS interest_matches,
     CASE WHEN json_extract(p,'$.mode')='personal' AND json_array_length(p,'$.bookmarks')>0
       THEN (SELECT COUNT(*) FROM article_topics at JOIN saved_topics st ON st.topic_id=at.topic_id WHERE at.article_id=a.id) ELSE 0 END AS saved_matches,
-    a.company_id IN (SELECT value FROM json_each(p,'$.follows')) AS followed,
+    CASE WHEN a.company_id IN (SELECT value FROM json_each(p,'$.follows')) THEN 1 ELSE 0 END AS followed,
     MAX(COALESCE(sm.affinity,0),COALESCE(si.similarity,0)) AS semantic_affinity,
     CASE WHEN sm.affinity>=COALESCE(si.similarity,0) THEN (SELECT title FROM articles WHERE id=sm.article_id) ELSE NULL END AS semantic_title,
     si.name AS semantic_topic,COALESCE(nm.similarity,0) AS negative_affinity

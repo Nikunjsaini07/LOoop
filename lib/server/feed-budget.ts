@@ -5,8 +5,8 @@ export async function reserveFeedBuild(db: D1Database, clientKey: string, now: n
   const minute = Math.floor(now / 60000);
   const key = `feed_budget:${await articleId(clientKey)}`;
   const row = await db.prepare(`INSERT INTO app_state(id,value) VALUES (?,?)
-    ON CONFLICT(id) DO UPDATE SET value=CASE WHEN CAST(value/10000 AS INTEGER)=? THEN value+1 ELSE excluded.value END
-    RETURNING value`).bind(key, minute * 10000 + 1, minute).first<{ value: number }>();
+    ON CONFLICT(id) DO UPDATE SET value=CASE WHEN CAST(app_state.value/10000 AS INTEGER)=? THEN app_state.value+1 ELSE excluded.value END
+    RETURNING app_state.value`).bind(key, minute * 10000 + 1, minute).first<{ value: number }>();
   if (!row || row.value % 10000 > 120) throw new FeedRateLimitError('Too many new searches in a short time. Please try again in a minute.');
 }
 

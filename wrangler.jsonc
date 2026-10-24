@@ -5,7 +5,9 @@
   "compatibility_date": "2026-05-15",
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": false,
-  "vars": { "APP_ORIGIN": "http://127.0.0.1:5173" },
+  "vars": {
+    "APP_ORIGIN": "http://127.0.0.1:5173"
+  },
   "observability": { "enabled": true },
   "d1_databases": [{
     "binding": "DB",
