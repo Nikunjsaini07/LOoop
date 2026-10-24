@@ -27,7 +27,7 @@ export async function getCurrentUser(request: Request, details = false) {
     const { data: { user }, error } = await supabase.auth.getUser(token);
     if (error || !user) throw new AuthenticationError('Your session expired. Sign in again.');
     const email = user.email ?? '';
-    const fullName = (user.user_metadata?.full_name as string) || null;
+    const fullName = (user.user_metadata?.full_name as string) || (user.user_metadata?.name as string) || null;
     return { userId: user.id, email, fullName, displayName: fullName || email || 'Reader' };
   }
 
