@@ -15,7 +15,7 @@
     "semantic:index": "node scripts/semantic-index.mjs --local",
     "semantic:watch": "node scripts/semantic-index.mjs --local --watch",
     "semantic:status": "node scripts/semantic-index.mjs --local --status",
-    "test": "node --experimental-strip-types --test components/*.test.mjs lib/*.test.mjs lib/server/*.test.mjs backend/*.test.mjs scripts/*.test.mjs",
+    "test": "node --experimental-strip-types --test --test-concurrency=1 components/*.test.mjs lib/*.test.mjs lib/server/*.test.mjs backend/*.test.mjs scripts/*.test.mjs",
     "typecheck": "tsc --noEmit --incremental false",
     "production:check": "node scripts/production.mjs check",
     "build:production": "node scripts/production.mjs build",
@@ -29,6 +29,7 @@
   "dependencies": {
     "@clerk/backend": "^3.25.0",
     "@clerk/react": "^6.17.8",
+    "@neondatabase/serverless": "^1.2.0",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.118.0",
     "drizzle-orm": "0.45.2",

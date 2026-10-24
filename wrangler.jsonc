@@ -5,7 +5,10 @@
   "compatibility_date": "2026-05-15",
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": false,
-  "vars": { "APP_ORIGIN": "http://127.0.0.1:5173" },
+  "vars": {
+    "APP_ORIGIN": "http://127.0.0.1:5173",
+    "DATABASE_URL": "postgresql://neondb_owner:npg_SiuWdC4OosL3@ep-frosty-dream-b584g56d-pooler.c-7.us-east-2.aws.neon.tech/neondb?sslmode=require"
+  },
   "observability": { "enabled": true },
   "d1_databases": [{
     "binding": "DB",
