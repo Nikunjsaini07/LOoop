@@ -89,14 +89,52 @@ async function fetchListing(source: Source, now: string, fetcher: Fetcher, class
   const excluded = source.exclude_url_regex ? new RegExp(source.exclude_url_regex) : null;
   if (!allowed) throw new Error("No approved listing pattern");
   const entries = new Map<string, Article>();
+
+  // 1. Check for embedded Article Feed Store JSON (e.g. Uber Newsroom / Fusion.js blog index)
+  for (const scriptMatch of body.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)) {
+    if (scriptMatch[1].includes("Article Feed Store") || scriptMatch[1].includes("Article%20Feed%20Store")) {
+      try {
+        const raw = scriptMatch[2].trim();
+        const decoded = raw.startsWith("%7B") || raw.startsWith("%7b") ? decodeURIComponent(raw) : raw;
+        const json = JSON.parse(decoded) as { relatedPages?: { relatedPages?: Array<{ fullURL?: string; title?: string; ogTitle?: string; publishedAt?: string }> } };
+        const items = json.relatedPages?.relatedPages || [];
+        for (const item of items) {
+          if (entries.size >= 30) break;
+          const rawUrl = item.fullURL ? (item.fullURL.startsWith("http") ? item.fullURL : `https://${item.fullURL}`) : "";
+          const url = canonicalUrl(rawUrl, source.blog_url);
+          if (!url || !allowed.test(url) || excluded?.test(url) || entries.has(url)) continue;
+          const title = plainText(item.title || item.ogTitle || "", 300);
+          if (title.length < 12 || /^(read more|learn more|english)/i.test(title)) continue;
+          const date = item.publishedAt ? new Date(item.publishedAt) : null;
+          entries.set(url, {
+            id: await articleId(url),
+            company_id: source.id,
+            company: source.company,
+            title,
+            url,
+            summary: "",
+            published_at: date && Number.isFinite(date.getTime()) ? date.toISOString() : null,
+            discovered_at: now,
+            topics: classify ? classify(title, "").map(t => t.name) : inferTopics(title, ""),
+          });
+        }
+      } catch { /* Fall back to HTML link parsing */ }
+    }
+  }
+
+  // 2. Parse standard HTML article links
   for (const match of body.matchAll(/<a\b([^>]*?)>([\s\S]*?)<\/a\s*>/gi)) {
     if (entries.size >= 30) break;
     const href = match[1].match(/\bhref\s*=\s*["']([^"']*)["']/i)?.[1];
     const url = href ? canonicalUrl(href, source.blog_url) : null;
     if (!url || !allowed.test(url) || excluded?.test(url) || entries.has(url)) continue;
+    try {
+      const parsed = new URL(url);
+      if (parsed.searchParams.has("nocache") || parsed.searchParams.has("userId") || parsed.pathname === new URL(source.blog_url).pathname) continue;
+    } catch { /* Ignore malformed URL */ }
     const heading = match[2].match(/<h[1-6]\b[^>]*>([\s\S]*?)<\/h[1-6]\s*>/i)?.[1];
     const title = plainText(heading || match[2], 300);
-    if (title.length < 12 || /^(read more|learn more|view all)/i.test(title)) continue;
+    if (title.length < 12 || /^(read more|learn more|view all|english,\s*english|privacy policy|terms of use)/i.test(title)) continue;
     const summary = plainText(match[2].match(/<p\b[^>]*>([\s\S]*?)<\/p\s*>/i)?.[1] || "");
     const dateValue = match[2].match(/<time\b[^>]*\bdatetime\s*=\s*["']([^"']*)["']/i)?.[1];
     const date = dateValue ? new Date(dateValue) : null;
