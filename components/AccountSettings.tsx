@@ -134,6 +134,13 @@ export default function AccountSettings() {
     (user?.identities?.[0]?.provider as string | undefined) ||
     "email";
 
+  const displayName =
+    (user?.user_metadata?.full_name as string) ||
+    (user?.user_metadata?.name as string) ||
+    reading.profile.name ||
+    user?.email?.split('@')[0] ||
+    "Reader";
+
   const providerLabel =
     provider === "google" ? "Google Account" : provider === "github" ? "GitHub Account" : "Email & Password";
 
@@ -177,9 +184,10 @@ export default function AccountSettings() {
             <div className="account-identity-box">
               <div className="account-user-info">
                 <div className="account-avatar" aria-hidden="true">
-                  {(user?.email?.[0] || "R").toUpperCase()}
+                  {displayName[0].toUpperCase()}
                 </div>
-                <div>
+                <div className="account-details">
+                  <p className="account-name">{displayName}</p>
                   <p className="account-email">{user?.email || "Signed-in Reader"}</p>
                   <div className="account-meta">
                     <span className="account-badge is-verified">
@@ -206,12 +214,23 @@ export default function AccountSettings() {
                 aria-expanded={showPasswordForm}
               >
                 <KeyRound size={14} aria-hidden="true" />
-                <span>{showPasswordForm ? "Hide password change" : "Change password"}</span>
+                <span>
+                  {showPasswordForm
+                    ? "Hide password change"
+                    : provider === "google"
+                    ? "Set account password"
+                    : "Change password"}
+                </span>
                 {showPasswordForm ? <ChevronUp size={14} aria-hidden="true" /> : <ChevronDown size={14} aria-hidden="true" />}
               </button>
 
               {showPasswordForm && (
                 <div className="settings-password-box">
+                  {provider === "google" && (
+                    <p className="settings-password-hint">
+                      Setting a password lets you sign in using either Google or your email address anytime.
+                    </p>
+                  )}
                   <form onSubmit={handlePasswordUpdate} className="settings-password-form">
                     {passwordStatus && (
                       <div

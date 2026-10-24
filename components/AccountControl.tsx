@@ -39,7 +39,11 @@ export default function AccountControl({ active, onProfileNavigate }: {
   return <div className="profile-nav" ref={root}
     onPointerEnter={event => { if (event.pointerType === 'mouse') setOpen(true); }}
     onPointerLeave={event => { if (event.pointerType === 'mouse') setOpen(false); }}
-    onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOpen(false); }}
+    onBlur={event => {
+      if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget as Node)) {
+        setOpen(false);
+      }
+    }}
     onKeyDown={event => {
       if (event.key === 'Escape') { event.preventDefault(); setOpen(false); trigger.current?.focus(); }
     }}>
@@ -58,11 +62,16 @@ export default function AccountControl({ active, onProfileNavigate }: {
       <div className="profile-dropdown-panel" role="group" aria-label="Profile options">
         <Link ref={firstItem} className="profile-dropdown-item" href="/profile" aria-current={active ? 'page' : undefined}
           onClick={event => { setOpen(false); onProfileNavigate?.(event); }}>
-          <UserRound size={14} aria-hidden="true" /> View profile
+          <UserRound size={15} aria-hidden="true" />
+          <span>View profile</span>
         </Link>
-        <Link className="profile-dropdown-item" href="/settings" onClick={() => setOpen(false)}><Settings size={14} aria-hidden="true" />Reading data & privacy</Link>
-        <button type="button" className="profile-dropdown-item" disabled={busy} onClick={signOut}>
-          <LogOut size={14} aria-hidden="true" />{busy ? 'Signing out…' : 'Sign out'}
+        <Link className="profile-dropdown-item" href="/settings" onClick={() => setOpen(false)}>
+          <Settings size={15} aria-hidden="true" />
+          <span>Reading data &amp; privacy</span>
+        </Link>
+        <button type="button" className="profile-dropdown-item profile-dropdown-signout" disabled={busy} onClick={signOut}>
+          <LogOut size={15} aria-hidden="true" />
+          <span>{busy ? 'Signing out…' : 'Sign out'}</span>
         </button>
         {error && <p className="profile-dropdown-error" role="alert">{error}</p>}
       </div>

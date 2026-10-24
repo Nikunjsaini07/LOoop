@@ -209,6 +209,6 @@ export default function ProfileView({ profile, articles, sources, onChange, onOp
     </div></section>
 
     <section className="profile-tray"><div className="profile-panel profile-feeds"><div className="section-heading"><div><h2>Your own editions</h2><p className="section-description">{profile.customFeeds.length ? `${profile.customFeeds.length} custom ${profile.customFeeds.length === 1 ? "feed" : "feeds"}, shaped around you.` : "Give a particular curiosity a feed of its own."}</p></div><button className="text-button" onClick={onCustomize}><SlidersHorizontal size={14} /> Create a feed</button></div>{profile.customFeeds.map((feed) => <div className="profile-feed" key={feed.id}><a href={`/?feed=${encodeURIComponent(feed.id)}`}>{feed.name}<ArrowRight size={13} /></a><small>{feed.companies.length ? `${feed.companies.length} companies` : "All companies"} · {feed.topics.length ? feed.topics.join(", ") : "All topics"}</small>{onEditFeed && <button className="icon-button" onClick={() => onEditFeed(feed)} aria-label={`Edit ${feed.name}`}><Pencil size={14} /></button>}</div>)}</div></section>
-    <p className="profile-storage-note"><a href="/settings">Reading data & privacy</a></p>
+    <p className="profile-storage-note"><Link href="/settings">Reading data &amp; privacy</Link></p>
   </section>;
 }
