@@ -46,6 +46,7 @@ function AuthLoading({ failed = false }: { failed?: boolean }) {
 export default function AuthScreen({ mode: initialMode }: { mode: 'sign-in' | 'sign-up' }) {
   const returnTo = useSyncExternalStore(subscribeLocation, returnPath, () => '/profile');
   const [mode, setMode] = useState<'sign-in' | 'sign-up'>(initialMode);
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
@@ -74,12 +75,18 @@ export default function AuthScreen({ mode: initialMode }: { mode: 'sign-in' | 's
         const { data, error: signUpError } = await supabase.auth.signUp({
           email: email.trim(),
           password,
+          options: {
+            data: {
+              full_name: fullName.trim(),
+              name: fullName.trim(),
+            },
+          },
         });
         if (signUpError) throw signUpError;
         if (data.session) {
           window.location.assign(returnTo || '/');
         } else {
-          setSuccess('Account created! If email confirmation is enabled, check your inbox.');
+          setSuccess('Account created! Please check your email (including Spam/Junk) to confirm your account, or sign in.');
         }
       }
     } catch (err) {
@@ -149,6 +156,23 @@ export default function AuthScreen({ mode: initialMode }: { mode: 'sign-in' | 's
                   <span>or with email</span>
                 </div>
                 
+                {!signingIn && (
+                  <div className="supabase-field">
+                    <label htmlFor="auth-name">Full name</label>
+                    <input
+                      id="auth-name"
+                      type="text"
+                      required
+                      autoComplete="name"
+                      className="supabase-input"
+                      placeholder="e.g. Jane Doe"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      disabled={busy}
+                    />
+                  </div>
+                )}
+
                 <div className="supabase-field">
                   <label htmlFor="auth-email">Email address</label>
                   <input
@@ -189,14 +213,14 @@ export default function AuthScreen({ mode: initialMode }: { mode: 'sign-in' | 's
                   {signingIn ? (
                     <>
                       Don&apos;t have an account?{' '}
-                      <a role="button" tabIndex={0} onClick={() => { setMode('sign-up'); setError(null); setSuccess(null); }}>
+                      <a role="button" tabIndex={0} onClick={() => { setMode('sign-up'); setError(null); setSuccess(null); setFullName(''); }}>
                         Sign up
                       </a>
                     </>
                   ) : (
                     <>
                       Already have an account?{' '}
-                      <a role="button" tabIndex={0} onClick={() => { setMode('sign-in'); setError(null); setSuccess(null); }}>
+                      <a role="button" tabIndex={0} onClick={() => { setMode('sign-in'); setError(null); setSuccess(null); setFullName(''); }}>
                         Sign in
                       </a>
                     </>

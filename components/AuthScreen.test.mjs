@@ -18,7 +18,7 @@ const Link='a',BrandLogo=()=>null,ThemeToggle=()=>null;
 const ArrowLeft=()=>null,ArrowRight=()=>null,Bookmark=()=>null,LoaderCircle=()=>null,RefreshCw=()=>null;
 const ClerkLoading=({children})=>context.status==='loading'?children:null;
 const ClerkFailed=({children})=>context.status==='error'?children:null;
-const ClerkLoaded=()=>null,SignIn=()=>null,SignUp=()=>null;`;
+const ClerkLoaded=({children})=>context.status==='loaded'?children:null,SignIn=()=>null,SignUp=()=>null;`;
 const { default: AuthScreen } = await import(`data:text/javascript;base64,${Buffer.from(prelude + compiled).toString('base64')}`);
 const render = (path, status = 'loading', mode = 'sign-in') => {
   Object.assign(globalThis.__authScreenTest, { path, status });
@@ -54,4 +54,18 @@ test('sign-up has its own heading while retaining the same loading and recovery 
   const html = render('/profile', 'error', 'sign-up');
   assert.match(html, /A shelf of your own/);
   assert.match(html, /Try again/);
+});
+
+test('sign-up form includes a full name field while sign-in requires only email and password', () => {
+  const signUpHtml = render('/profile', 'loaded', 'sign-up');
+  assert.match(signUpHtml, /id="auth-name"/);
+  assert.match(signUpHtml, /Full name/);
+  assert.match(signUpHtml, /id="auth-email"/);
+  assert.match(signUpHtml, /id="auth-password"/);
+
+  const signInHtml = render('/profile', 'loaded', 'sign-in');
+  assert.doesNotMatch(signInHtml, /id="auth-name"/);
+  assert.doesNotMatch(signInHtml, /Full name/);
+  assert.match(signInHtml, /id="auth-email"/);
+  assert.match(signInHtml, /id="auth-password"/);
 });
