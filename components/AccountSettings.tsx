@@ -135,9 +135,9 @@ export default function AccountSettings() {
     "email";
 
   const displayName =
+    reading.profile.name ||
     (user?.user_metadata?.full_name as string) ||
     (user?.user_metadata?.name as string) ||
-    reading.profile.name ||
     user?.email?.split('@')[0] ||
     "Reader";
 

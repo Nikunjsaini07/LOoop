@@ -7,6 +7,7 @@ import { TOPICS, type Article, type CustomFeed, type Profile, type Source } from
 import CompanyLogo from "./CompanyLogo";
 import FeedPagination from "./FeedPagination";
 import { readingSpot } from "@/lib/reading-spot";
+import { supabase } from "@/lib/supabase";
 
 type Props = {
   topicOptions?: string[];
@@ -128,7 +129,22 @@ export default function ProfileView({ profile, articles, sources, onChange, onOp
         </div>
         <button className="text-button profile-edit" aria-label="Edit your name and bio" aria-expanded={editing} onClick={() => { setName(profile.name); setBio(profile.bio); setEditing(!editing); }}><Pencil size={13} /><span>Edit profile</span></button>
       </div>
-      {editing && <form className="profile-edit-form" onSubmit={(event) => { event.preventDefault(); if (onChange({ name: name.trim() || "A curious mind", bio: bio.trim() })) setEditing(false); }}>
+      {editing && <form className="profile-edit-form" onSubmit={async (event) => {
+        event.preventDefault();
+        const trimmedName = name.trim() || "A curious mind";
+        const trimmedBio = bio.trim();
+        const saved = onChange({ name: trimmedName, bio: trimmedBio });
+        if (saved) {
+          setEditing(false);
+          try {
+            await supabase.auth.updateUser({
+              data: { full_name: trimmedName, name: trimmedName }
+            });
+          } catch {
+            // Neon DB profile write is authoritative
+          }
+        }
+      }}>
         <label>Name<input value={name} onChange={(event) => setName(event.target.value)} maxLength={60} autoFocus required /></label>
         <label>A line about you<input value={bio} onChange={(event) => setBio(event.target.value)} maxLength={160} placeholder="What are you curious about?" /></label>
         <div className="profile-form-actions"><button className="text-button" type="button" onClick={() => setEditing(false)}>Cancel</button><button className="ink-button" type="submit">Save profile</button></div>

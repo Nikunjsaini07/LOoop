@@ -182,6 +182,30 @@ export function useReadingProfile() {
       }
     }
 
+function hasMeaningfulReadingData(p: Profile | null | undefined): boolean {
+  if (!p) return false;
+  return Boolean(
+    (p.bookmarks && p.bookmarks.length > 0) ||
+    (p.readLogs && p.readLogs.length > 0) ||
+    (p.follows && p.follows.length > 0) ||
+    (p.customFeeds && p.customFeeds.length > 0)
+  );
+}
+
+function areProfilesEqual(a: Profile | null | undefined, b: Profile | null | undefined): boolean {
+  if (!a && !b) return true;
+  if (!a || !b) return false;
+  if (!hasMeaningfulReadingData(a) && !hasMeaningfulReadingData(b) && (a.name || '') === (b.name || '') && (a.bio || '') === (b.bio || '')) return true;
+  return (
+    JSON.stringify(a.bookmarks) === JSON.stringify(b.bookmarks) &&
+    JSON.stringify(a.readLogs) === JSON.stringify(b.readLogs) &&
+    JSON.stringify(a.follows) === JSON.stringify(b.follows) &&
+    JSON.stringify(a.customFeeds) === JSON.stringify(b.customFeeds) &&
+    (a.name || '') === (b.name || '') &&
+    (a.bio || '') === (b.bio || '')
+  );
+}
+
     function retainCopy(copy: StoredProfile) {
       recoveryCopy.current = copy;
       setRecovery(copy.profile);
@@ -202,7 +226,14 @@ export function useReadingProfile() {
         if (!Number.isInteger(result.version) || result.version < 0) throw new Error("Invalid account version");
         if (!preserve && result.version === serverVersion.current && (result.generation ?? 0) === accountGeneration.current) return;
         if (revision.current !== before || (dirty.current && !preserve)) { void flush(); return; }
-        if (preserve && dirty.current && (result.generation ?? 0) === accountGeneration.current) retainCopy({ format: 1, owner: expectedOwner!, profile: current.current, serverVersion: serverVersion.current, generation: accountGeneration.current, dirty: true });
+        if (preserve && dirty.current && (result.generation ?? 0) === accountGeneration.current) {
+          if (hasMeaningfulReadingData(current.current) && !areProfilesEqual(current.current, result.profile)) {
+            retainCopy({ format: 1, owner: expectedOwner!, profile: current.current, serverVersion: serverVersion.current, generation: accountGeneration.current, dirty: true });
+          } else {
+            const key = storageKey();
+            if (key) { try { window.localStorage.removeItem(`${key}:unsynced`); } catch {} }
+          }
+        }
         current.current = validate(result.profile);
         serverVersion.current = result.version;
         accountGeneration.current = result.generation ?? 0;
@@ -283,12 +314,24 @@ export function useReadingProfile() {
             recoveryCopy.current = null;
             setRecovery(null);
             if (local?.dirty && (local.generation ?? 0) === accountGeneration.current) {
-              try { retainCopy(local); retained = true; }
-              catch { storageWorks.current = false; }
+              if (hasMeaningfulReadingData(local.profile) && !areProfilesEqual(local.profile, serverProfile)) {
+                try { retainCopy(local); retained = true; }
+                catch { storageWorks.current = false; }
+              } else {
+                const k = storageKey();
+                if (k) { try { window.localStorage.removeItem(`${k}:unsynced`); } catch {} }
+              }
             }
             if (!retained) {
               const retainedCopy = readCopy(`${key}:unsynced`, owner.current);
-              if (retainedCopy?.dirty && (retainedCopy.generation ?? 0) === accountGeneration.current) { retainCopy(retainedCopy); retained = true; }
+              if (retainedCopy?.dirty && (retainedCopy.generation ?? 0) === accountGeneration.current) {
+                if (hasMeaningfulReadingData(retainedCopy.profile) && !areProfilesEqual(retainedCopy.profile, serverProfile)) {
+                  retainCopy(retainedCopy);
+                  retained = true;
+                } else {
+                  try { window.localStorage.removeItem(`${key}:unsynced`); } catch {}
+                }
+              }
             }
             current.current = serverProfile;
             dirty.current = false;
