@@ -10,6 +10,9 @@
     "DATABASE_URL": "postgresql://neondb_owner:npg_SiuWdC4OosL3@ep-frosty-dream-b584g56d-pooler.c-7.us-east-2.aws.neon.tech/neondb?sslmode=require"
   },
   "observability": { "enabled": true },
+  "triggers": {
+    "crons": ["0 6 * * *"]
+  },
   "d1_databases": [{
     "binding": "DB",
     // Keep this identity: the existing local archive is stored under this ID.

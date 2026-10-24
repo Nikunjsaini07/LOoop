@@ -1,5 +1,5 @@
 import { createClerkClient } from '@clerk/backend';
-import { env } from 'cloudflare:workers';
+import { env } from './env';
 
 export class AuthenticationError extends Error {}
 
@@ -9,7 +9,7 @@ function clerkSettings() {
   const jwtKey = env.CLERK_JWT_KEY || process.env.CLERK_JWT_KEY;
   const parties = env.CLERK_AUTHORIZED_PARTIES || process.env.CLERK_AUTHORIZED_PARTIES;
   if (!secretKey || !publishableKey || !parties) throw new Error('Clerk server configuration is incomplete');
-  const authorizedParties = parties.split(',').map(value => new URL(value.trim()).origin);
+  const authorizedParties = String(parties).split(',').map((value: string) => new URL(value.trim()).origin);
   return { secretKey, publishableKey, jwtKey, authorizedParties };
 }
 
@@ -19,8 +19,8 @@ export async function getCurrentUser(request: Request, details = false) {
   if (!/^Bearer \S+$/i.test(authorization)) throw new AuthenticationError('Invalid session');
   const token = authorization.replace(/^Bearer\s+/i, '');
 
-  const supabaseUrl = env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabaseUrl = (typeof env !== 'undefined' && (env as Record<string, unknown>).SUPABASE_URL as string | undefined) || process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = (typeof env !== 'undefined' && (env as Record<string, unknown>).SUPABASE_ANON_KEY as string | undefined) || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (supabaseUrl && supabaseKey) {
     const { createClient } = await import('@supabase/supabase-js');
     const supabase = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
@@ -45,8 +45,8 @@ export async function getCurrentUser(request: Request, details = false) {
 }
 
 export async function deleteIdentity(verifiedUserId: string) {
-  const supabaseUrl = env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseSecret = env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const supabaseUrl = (typeof env !== 'undefined' && (env as Record<string, unknown>).SUPABASE_URL as string | undefined) || process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseSecret = (typeof env !== 'undefined' && (env as Record<string, unknown>).SUPABASE_SERVICE_ROLE_KEY as string | undefined) || process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (supabaseUrl && supabaseSecret) {
     const { createClient } = await import('@supabase/supabase-js');
     const admin = createClient(supabaseUrl, supabaseSecret, { auth: { persistSession: false } });

@@ -1,4 +1,5 @@
 import { env } from 'cloudflare:workers';
+(globalThis as unknown as Record<string, unknown>).env = env;
 import * as articles from '../backend/routes/articles';
 import * as companies from '../backend/routes/companies';
 import * as sources from '../backend/routes/sources';
@@ -21,6 +22,8 @@ const routes = {
   '/api/ready': ready, '/api/webhooks/clerk': webhook,
 };
 
+import { refreshStaleSources } from '../lib/server/refresh';
+
 const worker = {
   async fetch(request: Request) {
     try {
@@ -29,6 +32,13 @@ const worker = {
     } catch {
       return Response.json({ error: 'The article service is temporarily unavailable.' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
     }
+  },
+  async scheduled(_controller: unknown, _env: unknown, ctx?: { waitUntil: (p: Promise<unknown>) => void }) {
+    const task = refreshStaleSources()
+      .then((res) => console.log('Scheduled refresh completed:', res))
+      .catch((err) => console.error('Scheduled refresh error:', err));
+    if (ctx?.waitUntil) ctx.waitUntil(task);
+    else await task;
   },
 };
 

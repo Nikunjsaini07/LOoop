@@ -1,4 +1,4 @@
-import { env } from 'cloudflare:workers';
+import { env } from '@/lib/server/env';
 import { database } from '@/lib/server/store';
 import { checkReadiness } from '@/lib/server/readiness';
 
