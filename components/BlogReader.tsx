@@ -21,6 +21,7 @@ const ProfileView = lazy(() => import("./ProfileView"));
 const FeedDialog = lazy(() => import("./FeedDialog"));
 
 type View = "home" | "trending" | "profile";
+type FeedSort = "default" | "newest" | "oldest" | "title" | "company" | "popular";
 const articleLabel = (article: Article) => `${article.published_at ? "" : "Collected "}${new Date(article.published_at || article.discovered_at).toLocaleDateString("en-GB", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}`;
 const mergeArticles = (first: Article[], next: Article[]) => [...new Map([...first, ...next].map((article) => [article.id, article])).values()];
 
@@ -79,6 +80,7 @@ export default function BlogReader({ initial, initialView = "home", initialLocat
   const [query, setQuery] = useState(initialLocation.q);
   const [company, setCompany] = useState(initialLocation.company);
   const [topic, setTopic] = useState(initialLocation.topic);
+  const [sort, setSort] = useState<FeedSort>("default");
   const [signal, setSignal] = useState(initialLocation.signal);
   const [period, setPeriod] = useState<string>(initialLocation.period);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -330,7 +332,7 @@ export default function BlogReader({ initial, initialView = "home", initialLocat
     url.searchParams.delete("page");
     window.history.replaceState(window.history.state, "", url);
   };
-  const clearFilters = () => { setQueryInput(""); setQuery(""); selectCompany(""); setTopic(""); setSignal("All"); };
+  const clearFilters = () => { setQueryInput(""); setQuery(""); selectCompany(""); setTopic(""); setSignal("All"); setSort("default"); };
   const retryFeed = () => { requestedEdition.current = ""; setReload(value=>value+1); };
   const goToPage = (number:number) => {
     setPageSelection({key:filterKey,number});
@@ -340,9 +342,33 @@ export default function BlogReader({ initial, initialView = "home", initialLocat
     document.getElementById("feed-stories")?.scrollIntoView({block:"start",behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"instant":"smooth"});
   };
   const issueDate = new Date(page.snapshot);
-  const activeFilters = Number(!!query) + Number(!!company) + Number(!!topic);
+  const activeFilters = Number(!!query) + Number(!!company) + Number(!!topic) + Number(sort !== "default");
 
-  const stories = ordered;
+  const sortedStories = useMemo(() => {
+    if (sort === "default") return ordered;
+    return [...ordered].sort((a, b) => {
+      if (sort === "newest") {
+        const dateA = a.published_at || a.discovered_at || "";
+        const dateB = b.published_at || b.discovered_at || "";
+        return dateB.localeCompare(dateA);
+      }
+      if (sort === "oldest") {
+        const dateA = a.published_at || a.discovered_at || "";
+        const dateB = b.published_at || b.discovered_at || "";
+        return dateA.localeCompare(dateB);
+      }
+      if (sort === "title") return a.title.localeCompare(b.title);
+      if (sort === "company") return a.company.localeCompare(b.company);
+      if (sort === "popular") {
+        const savesA = totals[a.id]?.saves ?? 0;
+        const savesB = totals[b.id]?.saves ?? 0;
+        return savesB - savesA;
+      }
+      return 0;
+    });
+  }, [ordered, sort, totals]);
+
+  const stories = sortedStories;
   const featured = view === "home" && pageNumber===1 ? stories[0] ?? null : null;
   const remaining = featured ? stories.filter((article) => article.id !== featured.id) : stories;
   const renderStory = (article: Article, index?: number) => <StoryCard key={article.id} article={article} returnTo={returnTo} rank={index} ready={ready} saved={profile.bookmarks.includes(article.id)} logged={profile.readLogs.some(log=>log.articleId===article.id)} stats={totals[article.id]} onOriginal={() => recordOpen(article)} feedback={profile.recommendationFeedback?.find(item=>item.articleId===article.id)?.value} onFeedback={(value)=>rateRecommendation(article,value)} onSave={() => toggleBookmark(article)} onLog={() => toggleReadLog(article)} onTopic={(value) => { setTopic(value); setSearchOpen(true); if (view !== "home") navigate("home"); }} />;
@@ -371,8 +397,8 @@ export default function BlogReader({ initial, initialView = "home", initialLocat
           <div className="reading-toolbar" aria-label="Reading controls"><label className="edition-select"><span className="sr-only">Choose your feed</span><select value={feed} onChange={event => { clearFilters(); setFeed(event.target.value); }}><option value="personal">{accountId ? "For you" : "Discover"}</option><option value="latest">Latest</option><option value="following">Following</option>{!["personal", "latest", "following"].includes(feed) && !customFeed && <option value={feed}>Unavailable custom feed</option>}{profile.customFeeds.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select><ChevronDown size={14} /></label><div><button className="text-button" aria-expanded={searchOpen} aria-controls="reading-filters" onClick={() => setSearchOpen(!searchOpen)}><SlidersHorizontal size={14} />Filters{activeFilters ? ` (${activeFilters})` : ""}</button><button className="text-button" disabled={!ready} onClick={() => customize(customFeed ?? null)}><Plus size={14} />{customFeed ? "Edit feed" : "Create feed"}</button></div></div>
           <div className="search-tray tray"><label className="search-sheet sheet"><Search size={16} strokeWidth={1.6} aria-hidden="true" /><input ref={searchInput} type="search" placeholder={`Search collected articles`} value={queryInput} maxLength={200} onChange={(event) => setQueryInput(event.target.value)} aria-label="Search titles and abstracts" /><span className="search-shortcut" aria-hidden="true"><kbd>Ctrl K</kbd></span></label></div>
           <div className="signal-chips" aria-label="Filter by subject">{signals.map((value) => <button key={value} className={`signal-chip${signal === value ? " is-active" : ""}`} aria-pressed={signal === value} onClick={() => setSignal(value)}>{value}</button>)}</div>
-          {(feed !== "personal" || company || topic) && <div className="active-filter-note"><span>{customFeed?.name || (!["personal", "latest", "following"].includes(feed) ? "Unavailable custom feed" : feed === "following" ? "Following" : feed === "latest" ? "Latest" : accountId ? "For you" : "Discover")}{company ? ` · ${sources.find((item) => item.id === company)?.company ?? company}` : ""}{topic ? ` · ${topic}` : ""}</span><button className="active-filter-edit" onClick={() => setSearchOpen(!searchOpen)}>Edit filters</button></div>}
-          {searchOpen && <div className="feed-filter-panel" id="reading-filters"><div className="feed-filter-row"><label className="feed-filter-select-wrap"><span className="sr-only">Company</span><select value={company} onChange={(event) => selectCompany(event.target.value)}><option value="">All companies</option>{sources.map((source) => <option value={source.id} key={source.id}>{source.company}</option>)}</select><ChevronDown size={14} aria-hidden="true" /></label><label className="feed-filter-select-wrap"><span className="sr-only">Topic</span><select value={topic} onChange={(event) => setTopic(event.target.value)}><option value="">All topics</option>{topicOptions.map((value) => <option key={value}>{value}</option>)}</select><ChevronDown size={14} aria-hidden="true" /></label><button className="feed-filter-clear-btn" onClick={() => { clearFilters(); setSearchOpen(false); }}>Clear</button></div>{customFeed && <p className="filter-note">Searching within “{customFeed.name}”. Your feed’s rules still apply.</p>}</div>}
+          {(feed !== "personal" || company || topic || sort !== "default") && <div className="active-filter-note"><span>{customFeed?.name || (!["personal", "latest", "following"].includes(feed) ? "Unavailable custom feed" : feed === "following" ? "Following" : feed === "latest" ? "Latest" : accountId ? "For you" : "Discover")}{company ? ` · ${sources.find((item) => item.id === company)?.company ?? company}` : ""}{topic ? ` · ${topic}` : ""}{sort !== "default" ? ` · ${sort === "newest" ? "Newest" : sort === "oldest" ? "Oldest" : sort === "title" ? "Title A–Z" : sort === "company" ? "Company A–Z" : "Most bookmarked"}` : ""}</span><button className="active-filter-edit" onClick={() => setSearchOpen(!searchOpen)}>Edit filters</button></div>}
+          {searchOpen && <div className="feed-filter-panel" id="reading-filters"><div className="feed-filter-row"><label className="feed-filter-select-wrap"><span className="sr-only">Company</span><select value={company} onChange={(event) => selectCompany(event.target.value)}><option value="">All companies</option>{sources.map((source) => <option value={source.id} key={source.id}>{source.company}</option>)}</select><ChevronDown size={14} aria-hidden="true" /></label><label className="feed-filter-select-wrap"><span className="sr-only">Topic</span><select value={topic} onChange={(event) => setTopic(event.target.value)}><option value="">All topics</option>{topicOptions.map((value) => <option key={value}>{value}</option>)}</select><ChevronDown size={14} aria-hidden="true" /></label><label className="feed-filter-select-wrap"><span className="sr-only">Sort by</span><select value={sort} onChange={(event) => setSort(event.target.value as FeedSort)}><option value="default">Default order</option><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="title">Title, A–Z</option><option value="company">Company, A–Z</option><option value="popular">Most bookmarked</option></select><ChevronDown size={14} aria-hidden="true" /></label><button className="feed-filter-clear-btn" onClick={() => { clearFilters(); setSearchOpen(false); }}>Clear</button></div>{customFeed && <p className="filter-note">Searching within “{customFeed.name}”. Your feed’s rules still apply.</p>}</div>}
         </> : <header className="trending-heading trending-editorial">
           <p className="eyebrow">THE READING ROOM</p><h1>Good ideas,<br/><em>finding readers.</em></h1>
           <p className="trending-intro">Ranked by bookmarks and read logs {period === "today" ? "from the last 24 hours" : period === "week" ? "from the last seven days" : "across all time"}. Read logs weigh more than bookmarks; newer activity has more influence. Recent discoveries fill any remaining places and are labeled separately.</p>
