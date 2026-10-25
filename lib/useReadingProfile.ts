@@ -172,7 +172,10 @@ export function useReadingProfile() {
           label("syncing");
         }
       } catch (error) {
-        if (active) { persist(); label("error"); setMutationError(error instanceof Error ? error.message : "Your changes could not be synced."); }
+        const message = error instanceof Error
+          ? (error.message.includes("Failed to fetch") ? "Unable to reach the server. Your reading is saved on this device." : error.message)
+          : "Your changes could not be synced.";
+        if (active) { persist(); label("error"); setMutationError(message); }
       } finally {
         saving = false;
         if (active && !conflicted.current && remote.current && dirty.current) {
@@ -243,7 +246,12 @@ function areProfilesEqual(a: Profile | null | undefined, b: Profile | null | und
         persist();
         label("synced");
         if (recoveryCopy.current) setStorageLabel("Account loaded · unsynced device copy retained");
-      } catch (error) { if (active) { label("error"); setMutationError(error instanceof Error ? error.message : "Account check failed."); } }
+      } catch (error) {
+        const message = error instanceof Error
+          ? (error.message.includes("Failed to fetch") ? "Unable to reach the server. Your reading is saved on this device." : error.message)
+          : "Account check failed.";
+        if (active) { label("error"); setMutationError(message); }
+      }
       finally { refreshing = false; }
     }
 
