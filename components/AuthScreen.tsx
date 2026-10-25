@@ -133,7 +133,7 @@ export default function AuthScreen({ mode: initialMode }: { mode: 'sign-in' | 's
           <section className="auth-card sheet" aria-labelledby="auth-title">
             <div className="issue-pill auth-pill"><span></span>Your reading space</div>
             <h1 id="auth-title">{signingIn ? 'Welcome back.' : 'A shelf of your own.'}</h1>
-            <p className="auth-intro">Save good stories, follow your favorite companies, and pick up where you left off.</p>
+            <p className="auth-intro">Save good blogs, follow your favorite companies, and pick up where you left off.</p>
           
           <div className="auth-form">
             <ClerkLoading><AuthLoading /></ClerkLoading>
@@ -233,7 +233,7 @@ export default function AuthScreen({ mode: initialMode }: { mode: 'sign-in' | 's
           </div>
         </section>
       </div>
-      <Link className="auth-guest" href={browseTo}>Just here to read? <span>Browse stories<ArrowRight size={14} aria-hidden="true" /></span></Link>
+      <Link className="auth-guest" href={browseTo}>Just here to read? <span>Browse blogs<ArrowRight size={14} aria-hidden="true" /></span></Link>
         <p className="auth-privacy">Your reading library is private. <Link href="/privacy">Privacy details</Link></p>
       </div>
     </main>

@@ -15,6 +15,6 @@ export default function CompanySpotlight({ company, available, following, ready,
       <p className="spotlight-description">{companyDescription(company)}</p>
       <CompanyMetrics company={company} available={available} />
     </div>
-    <div className="spotlight-story">{company.latestArticle ? <><span className="directory-eyebrow">Latest in the archive</span><a className="spotlight-story-title" href={`/articles/${encodeURIComponent(company.latestArticle.id)}`}>{company.latestArticle.title}<ArrowUpRight size={17} /></a></> : <p>New stories will appear here as they join the archive.</p>}<a className="company-browse" href={companyHref(company.id)}>Browse {company.name} blogs <ArrowRight size={13} /></a></div>
+    <div className="spotlight-story">{company.latestArticle ? <><span className="directory-eyebrow">Latest in the archive</span><a className="spotlight-story-title" href={`/articles/${encodeURIComponent(company.latestArticle.id)}`}>{company.latestArticle.title}<ArrowUpRight size={17} /></a></> : <p>New blogs will appear here as they join the archive.</p>}<a className="company-browse" href={companyHref(company.id)}>Browse {company.name} blogs <ArrowRight size={13} /></a></div>
   </article>;
 }

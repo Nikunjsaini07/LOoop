@@ -11,7 +11,7 @@ import "./product.css";
 
 export const metadata: Metadata = {
   title: "Readwell — Engineering, without the noise",
-  description: "Engineering stories from the companies building what comes next. Follow companies, shape your own feed, and save something worth reading.",
+  description: "Engineering blogs from the companies building what comes next. Follow companies, shape your own feed, and save something worth reading.",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",

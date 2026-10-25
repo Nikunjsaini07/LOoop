@@ -38,7 +38,7 @@ test('identity service failures expose recovery without hiding guest browsing', 
   const html = render('/settings', 'error');
   assert.match(html, /Sign-in couldn’t load/);
   assert.match(html, /Try again/);
-  assert.match(html, /Browse stories/);
+  assert.match(html, /Browse blogs/);
   assert.doesNotMatch(html, /Loading secure sign-in/);
 });
 

@@ -54,14 +54,14 @@ export default function CompaniesView({ initial }: { initial: DirectoryData }) {
     <main className="reading-main companies-main" id="companies-main">
       <ProfileSyncNotice {...reading} />
       <section className="companies-intro" aria-labelledby="companies-heading">
-        <p className="issue-pill">{companies.length} companies · {formatCount(total("blogCount"))} collected stories</p>
+        <p className="issue-pill">{companies.length} companies · {formatCount(total("blogCount"))} collected blogs</p>
         <h1 id="companies-heading">Good ideas.<br /><em>Good company.</em></h1>
-        <p className="hero-description">Follow the engineering teams you want to hear from. Find their stories in your Following feed.</p>
+        <p className="hero-description">Follow the engineering teams you want to hear from. Find their blogs in your Following feed.</p>
       </section>
       <CompanyDirectory companies={companies} available={directory.communityAvailable} follows={profile.follows} ready={ready} onToggle={toggleFollow} />
-      <div className="directory-data-note"><p>Stories come from each company’s own blog. Follow a team to keep up with its writing.</p>{ready && syncStatus === "local" && <p><a href="/sign-in?return_to=%2Fcompanies">Sign in to follow companies <ArrowUpRight size={11} /></a></p>}{refreshError && <p role="status">Showing the last loaded totals. <button onClick={() => setRetry(value => value + 1)}>Try again</button></p>}{ready && syncStatus === "error" && <p role="status">Your follows are saved on this device. Account sync needs attention in <a href="/profile">your profile</a>.</p>}</div>
+      <div className="directory-data-note"><p>Blogs come from each company’s own blog. Follow a team to keep up with its writing.</p>{ready && syncStatus === "local" && <p><a href="/sign-in?return_to=%2Fcompanies">Sign in to follow companies <ArrowUpRight size={11} /></a></p>}{refreshError && <p role="status">Showing the last loaded totals. <button onClick={() => setRetry(value => value + 1)}>Try again</button></p>}{ready && syncStatus === "error" && <p role="status">Your follows are saved on this device. Account sync needs attention in <a href="/profile">your profile</a>.</p>}</div>
       <p className="sr-only" role="status">{announcement}</p>
-      <footer className="paper-footer"><span>Good ideas have good company.</span><span>Stories stay with their publishers.</span></footer>
+      <footer className="paper-footer"><span>Good ideas have good company.</span><span>Blogs stay with their publishers.</span></footer>
     </main>
   </div>;
 }

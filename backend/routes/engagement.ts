@@ -8,7 +8,7 @@ export async function POST(request: Request) {
   if (!request.headers.get('content-type')?.includes('application/json')) return jsonError('Send a JSON reading action',415);
   try {
     const user = await getCurrentUser(request);
-    if (!user) return jsonError('Sign in to bookmark stories or log reads',401);
+    if (!user) return jsonError('Sign in to bookmark blogs or log reads',401);
     const body = await request.text();
     if (body.length > 1000) return jsonError('Reading action is too large',413);
     const data = JSON.parse(body);

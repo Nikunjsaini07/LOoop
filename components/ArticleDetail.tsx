@@ -44,7 +44,7 @@ export default function ArticleDetail({ article, returnTo = "/" }: { article: Ar
           <CommunityStats stats={totals[article.id]} />
         </header>
         <section className="abstract-tray tray" aria-labelledby="abstract-heading">
-          <div className="abstract-sheet sheet"><h2 className="eyebrow" id="abstract-heading">The short version</h2><p className={abstract ? "detail-abstract" : "detail-abstract detail-no-abstract"}>{abstract || "The publisher hasn’t provided an abstract for this article. Follow the link below to read the original story."}</p></div>
+          <div className="abstract-sheet sheet"><h2 className="eyebrow" id="abstract-heading">The short version</h2><p className={abstract ? "detail-abstract" : "detail-abstract detail-no-abstract"}>{abstract || "The publisher hasn’t provided an abstract for this article. Follow the link below to read the original blog."}</p></div>
           <div className="abstract-source"><span>From {publisher}</span>{abstract && <span>Publisher excerpt</span>}</div>
         </section>
         <a className="detail-publisher-link" href={article.url} target="_blank" rel="noopener noreferrer" onClick={() => recordOpen(article)}><span><strong>Read the original article</strong><small>{publisher}</small></span><ArrowUpRight size={20} strokeWidth={1.5} /></a>
@@ -55,11 +55,11 @@ export default function ArticleDetail({ article, returnTo = "/" }: { article: Ar
         {message && <p className="detail-message" role="alert">{message}</p>}
         {communityStatus === "error" && <p className="detail-message" role="status">Your personal log is saved. Community activity could not be synced.</p>}
         <div className="detail-secondary-actions"><button className="text-button" aria-pressed={saved} onClick={() => toggleBookmark(article)}><Bookmark size={14} fill={saved ? "currentColor" : "none"} />{saved ? "Bookmarked" : "Save for later"}</button></div>
-        {ready && syncStatus === "local" && <p className="detail-sync-link"><a href={`/sign-in?return_to=${encodeURIComponent(`/articles/${article.id}`)}`}>Sign in to save stories and log reads <ArrowUpRight size={11} /></a></p>}
+        {ready && syncStatus === "local" && <p className="detail-sync-link"><a href={`/sign-in?return_to=${encodeURIComponent(`/articles/${article.id}`)}`}>Sign in to save blogs and log reads <ArrowUpRight size={11} /></a></p>}
         {ready && syncStatus !== "local" && <p className="detail-sync-link">Your bookmarks and read logs help shape Trending. Undoing an action updates the totals.</p>}
       </article>
       <ReportStory articleId={article.id} />
-      <footer className="paper-footer"><span>A little reading, every day.</span><span>Stories stay with their publishers.</span></footer>
+      <footer className="paper-footer"><span>A little reading, every day.</span><span>Blogs stay with their publishers.</span></footer>
     </main>
   </div>;
 }

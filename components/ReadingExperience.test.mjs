@@ -33,7 +33,7 @@ test('profile shows last read rather than the empty next-read prompt', () => {
 });
 
 test('history loading and failure never masquerade as an empty library', () => {
-  assert.match(renderProfile({ articles: [], libraryState: 'loading' }), /Loading your last story/);
+  assert.match(renderProfile({ articles: [], libraryState: 'loading' }), /Loading your last blog/);
   const failed = renderProfile({ articles: [], libraryState: 'error' });
   assert.match(failed, /Your reading history is still saved/);
   assert.match(failed, /Try again/);
