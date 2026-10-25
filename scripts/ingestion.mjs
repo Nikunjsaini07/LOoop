@@ -20,6 +20,7 @@ const config = {
   name: 'readzz-ingestion',
   main: join(root, 'workers', 'ingestion.ts'),
   compatibility_date: '2026-05-15',
+  compatibility_flags: ['nodejs_compat'],
   account_id: settings.CLOUDFLARE_ACCOUNT_ID,
   workers_dev: false,
   preview_urls: false,
