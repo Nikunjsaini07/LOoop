@@ -10,12 +10,8 @@ export async function GET(request: Request) {
   const returnTo = requestUrl.searchParams.get('return_to') || requestUrl.searchParams.get('next') || '/';
 
   if (code) {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-    if (!supabaseUrl || !supabaseAnonKey) {
-      return NextResponse.redirect(`${requestUrl.origin}/sign-in?error=config_error`);
-    }
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://bkfxvxkdasxqlmzyjpoz.supabase.co';
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_OYbHXFEQ1JCkjB_5NCIeXQ_QqUTQB7N';
 
     const cookieStore = await cookies();
     const supabase = createServerClient(

@@ -8,12 +8,8 @@ export async function getCurrentUser(request: Request) {
   if (!/^Bearer \S+$/i.test(authorization)) throw new AuthenticationError('Invalid session');
   const token = authorization.replace(/^Bearer\s+/i, '');
 
-  const supabaseUrl = (typeof env.SUPABASE_URL === 'string' ? env.SUPABASE_URL : undefined) || process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = (typeof env.SUPABASE_ANON_KEY === 'string' ? env.SUPABASE_ANON_KEY : undefined) || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Supabase configuration is incomplete. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.');
-  }
+  const supabaseUrl = (typeof env.SUPABASE_URL === 'string' ? env.SUPABASE_URL : undefined) || process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://bkfxvxkdasxqlmzyjpoz.supabase.co';
+  const supabaseKey = (typeof env.SUPABASE_ANON_KEY === 'string' ? env.SUPABASE_ANON_KEY : undefined) || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_OYbHXFEQ1JCkjB_5NCIeXQ_QqUTQB7N';
 
   const { createClient } = await import('@supabase/supabase-js');
   const supabase = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });

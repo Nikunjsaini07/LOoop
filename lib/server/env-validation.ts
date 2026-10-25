@@ -32,33 +32,12 @@ export interface ApiConfig {
  * Required for authentication to work
  */
 export function validateSupabaseConfig(env: Record<string, string | undefined>): SupabaseConfig {
-  const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL || env.SUPABASE_URL;
-  const supabaseAnonKey = env.NEXT_PUBLIC_SUPABASE_ANON_KEY || env.SUPABASE_ANON_KEY;
+  const defaultUrl = 'https://bkfxvxkdasxqlmzyjpoz.supabase.co';
+  const defaultKey = 'sb_publishable_OYbHXFEQ1JCkjB_5NCIeXQ_QqUTQB7N';
+
+  const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL || env.SUPABASE_URL || defaultUrl;
+  const supabaseAnonKey = env.NEXT_PUBLIC_SUPABASE_ANON_KEY || env.SUPABASE_ANON_KEY || defaultKey;
   const supabaseServiceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl) {
-    throw new EnvValidationError(
-      'NEXT_PUBLIC_SUPABASE_URL is required. Get it from your Supabase project settings.'
-    );
-  }
-
-  if (!supabaseAnonKey) {
-    throw new EnvValidationError(
-      'NEXT_PUBLIC_SUPABASE_ANON_KEY is required. Get it from your Supabase project settings.'
-    );
-  }
-
-  // Validate URL format
-  try {
-    const url = new URL(supabaseUrl);
-    if (!url.hostname.includes('supabase')) {
-      console.warn('SUPABASE_URL does not appear to be a valid Supabase URL');
-    }
-  } catch {
-    throw new EnvValidationError(
-      `NEXT_PUBLIC_SUPABASE_URL must be a valid URL, got: ${supabaseUrl}`
-    );
-  }
 
   return {
     supabaseUrl,

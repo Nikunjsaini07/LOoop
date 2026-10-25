@@ -129,7 +129,7 @@ export default function AuthScreen({ mode: initialMode }: { mode: 'sign-in' | 's
         if (data.session) {
           window.location.assign(returnTo || '/');
         } else {
-          setSuccess('Account created! Please check your email (including Spam/Junk) to confirm your account, or sign in.');
+          setSuccess('Account created! Please check your email (including Spam/Junk) to verify your account, or sign in.');
         }
       }
     } catch (err) {
