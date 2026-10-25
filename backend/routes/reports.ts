@@ -7,7 +7,7 @@ export async function POST(request: Request) {
   if (!request.headers.get('content-type')?.includes('application/json')) return jsonError('Send a JSON report', 415);
   try {
     const user = await getCurrentUser(request);
-    if (!user) return jsonError('Sign in to report a story', 401);
+    if (!user) return jsonError('Sign in to report a blog', 401);
     const body = await request.text();
     if (body.length > 2000) return jsonError('Report is too long', 413);
     const result = await saveReaderReport(database(), user.userId, JSON.parse(body));

@@ -4,14 +4,36 @@ Engineering stories from company blogs, with search, follows, bookmarks and read
 
 - Website: Next.js on Vercel.
 - API: Cloudflare Workers.
-- Database: Cloudflare D1.
-- Sign-in: Supabase Auth.
+- Database: Cloudflare D1 (SQLite) or Neon PostgreSQL.
+- Authentication: Supabase Auth.
 
 Deploy from GitHub branch **main**, with Vercel Root Directory **.**.
 
+## Prerequisites
+
+- Node.js 22.13 or newer
+- Supabase project (for authentication)
+- Cloudflare account (for Workers and D1)
+- Neon PostgreSQL database (optional, for production)
+
+## Prerequisites
+
+- Node.js 22.13 or newer
+- Supabase project (for authentication)
+- Cloudflare account (for Workers and D1)
+- Neon PostgreSQL database (optional, for production)
+
 ## Local development
 
-Use Node 22.13 or newer. Run `npm ci`, copy `.env.example` to `.env.local` for a fresh checkout, and enter your development settings. Preserve existing local credentials and database files.
+Use Node 22.13 or newer. Run `npm ci`, copy `.env.example` to `.env.local` for a fresh checkout, and configure your Supabase credentials:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
+```
+
+Then run:
 
 ```sh
 node scripts/setup-local.mjs

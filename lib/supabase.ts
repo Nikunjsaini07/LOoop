@@ -1,7 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
+import { validateSupabaseConfig } from './server/env-validation';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://bkfxvxkdasxqlmzyjpoz.supabase.co';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_OYbHXFEQ1JCkjB_5NCIeXQ_QqUTQB7N';
+function getSupabaseConfig() {
+  // Validate environment variables at module load time
+  const config = validateSupabaseConfig(process.env);
+  return config;
+}
+
+const { supabaseUrl, supabaseAnonKey } = getSupabaseConfig();
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {

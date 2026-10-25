@@ -1,4 +1,4 @@
-// Accept local app paths only, including when Clerk returns from an OAuth flow.
+// Accept local app paths only, including when Supabase returns from an OAuth flow.
 export function safeReturnPath(value: string | null | undefined): string {
   if (!value?.startsWith('/') || value.startsWith('//')) return '/profile';
   try {

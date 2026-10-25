@@ -52,13 +52,13 @@ export interface D1PreparedStatement {
   bind(...values: unknown[]): D1PreparedStatement;
   first<T = unknown>(colName?: string): Promise<T | null>;
   all<T = unknown>(): Promise<{ results: T[]; success: boolean; meta: Record<string, unknown> }>;
-  run<T = unknown>(): Promise<{ success: boolean; meta: Record<string, unknown> }>;
+  run(): Promise<{ success: boolean; meta: Record<string, unknown> }>;
   raw<T = unknown>(): Promise<T[]>;
 }
 
 export interface NeonD1Database {
   prepare(query: string): D1PreparedStatement;
-  batch<T = unknown>(statements: D1PreparedStatement[]): Promise<{ results: T[]; success: boolean; meta: Record<string, unknown> }[]>;
+  batch(statements: D1PreparedStatement[]): Promise<{ results: unknown[]; success: boolean; meta: Record<string, unknown> }[]>;
   exec(query: string): Promise<{ count: number; duration: number }>;
 }
 
@@ -96,7 +96,7 @@ class PreparedStatement implements D1PreparedStatement {
     };
   }
 
-  async run<T = unknown>(): Promise<{ success: boolean; meta: Record<string, unknown> }> {
+  async run(): Promise<{ success: boolean; meta: Record<string, unknown> }> {
     const converted = convertSql(this.rawQuery);
     await this.client.query(converted, this.params);
     return {
@@ -127,11 +127,11 @@ export function createNeonDatabase(connectionString: string): NeonD1Database {
       return new PreparedStatement(client, query);
     },
 
-    async batch<T = unknown>(statements: D1PreparedStatement[]): Promise<{ results: T[]; success: boolean; meta: Record<string, unknown> }[]> {
-      const results: { results: T[]; success: boolean; meta: Record<string, unknown> }[] = [];
+    async batch(statements: D1PreparedStatement[]): Promise<{ results: unknown[]; success: boolean; meta: Record<string, unknown> }[]> {
+      const results: { results: unknown[]; success: boolean; meta: Record<string, unknown> }[] = [];
       for (const stmt of statements) {
         const ps = stmt as PreparedStatement;
-        const res = await ps.all<T>();
+        const res = await ps.all();
         results.push(res);
       }
       return results;

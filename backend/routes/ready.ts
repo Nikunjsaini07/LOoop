@@ -5,15 +5,15 @@ import { checkReadiness } from '@/lib/server/readiness';
 export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
+    const supabaseUrl = (typeof env.SUPABASE_URL === 'string' ? env.SUPABASE_URL : undefined) || process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = (typeof env.SUPABASE_ANON_KEY === 'string' ? env.SUPABASE_ANON_KEY : undefined) || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const appOrigin = typeof env.APP_ORIGIN === 'string' ? env.APP_ORIGIN : undefined;
+    
     const result = await checkReadiness(database(), {
       production: env.REQUIRE_SCHEDULED_INGESTION === 'true',
-      publishableKey: env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
-      secretKey: env.CLERK_SECRET_KEY || process.env.CLERK_SECRET_KEY,
-      webhookSecret: env.CLERK_WEBHOOK_SIGNING_SECRET || process.env.CLERK_WEBHOOK_SIGNING_SECRET,
-      authorizedParties: env.CLERK_AUTHORIZED_PARTIES || process.env.CLERK_AUTHORIZED_PARTIES,
-      origin: env.APP_ORIGIN,
-      supabaseUrl: env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL,
-      supabaseAnonKey: env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      supabaseUrl,
+      supabaseAnonKey,
+      origin: appOrigin,
       schedulerIntervalMs: 24 * 60 * 60 * 1000,
     });
     return Response.json(result, { status: result.ready ? 200 : 503, headers: { 'Cache-Control': 'no-store' } });

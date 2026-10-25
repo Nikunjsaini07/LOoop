@@ -29,7 +29,7 @@ export async function renderReader(initialView: ReaderView, search: Record<strin
   if (location.company) query.set('company', location.company);
   if (location.topic) query.set('topic', location.topic);
   if (initialView === 'home' && location.signal !== 'All') query.set('signal', location.signal);
-  // Account editions are restored by the client using a verified Clerk token.
+  // Account editions are restored by the client using a verified Supabase token.
   // Public rendering must never request another reader's private edition.
   if (location.feed === 'following' || !['personal', 'latest', 'following'].includes(location.feed)) query.set('company', '__none__');
   const initial = await loadFeed(query);

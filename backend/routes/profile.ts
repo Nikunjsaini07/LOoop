@@ -16,7 +16,7 @@ async function storedProfile(userId: string, name: string) {
 
 export async function GET(request: Request) {
   try {
-    const user = await getCurrentUser(request, true);
+    const user = await getCurrentUser(request);
     if (!user) return jsonError("Sign in to sync your reading profile across devices", 401);
     const stored = await storedProfile(user.userId, user.fullName || user.email.split("@")[0] || "Your profile");
     return Response.json({ ...stored, user: { id: user.userId, name: user.displayName, email: user.email } }, { headers: { "Cache-Control": "private, no-store", "Vary": "Authorization, Cookie" } });

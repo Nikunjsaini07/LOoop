@@ -178,8 +178,8 @@ body:has(.auth-page) .site-sky {
 }
 
 .supabase-oauth-group {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 10px;
 }
 
@@ -315,7 +315,12 @@ body:has(.auth-page) .site-sky {
   margin-top: 8px;
 }
 
-.supabase-toggle a {
+.supabase-toggle a,
+.supabase-toggle button {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
   color: var(--ink);
   font-weight: 500;
   cursor: pointer;
@@ -325,7 +330,8 @@ body:has(.auth-page) .site-sky {
   transition: opacity 150ms;
 }
 
-.supabase-toggle a:hover {
+.supabase-toggle a:hover,
+.supabase-toggle button:hover {
   opacity: .75;
 }
 

@@ -1,14 +1,14 @@
 import { backendFetch } from '../backend';
 import { secureResponse } from '../response-headers';
 
-const forwardedHeaders = ['authorization', 'content-type', 'origin', 'sec-fetch-site', 'svix-id', 'svix-timestamp', 'svix-signature'];
+const forwardedHeaders = ['authorization', 'content-type', 'origin', 'sec-fetch-site'];
 const methodsWithBody = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 const MAX_BODY_BYTES = 600000;
 
 export async function proxyApi(request: Request) {
   const url = new URL(request.url);
   const fail = (error: string, status: number) => Response.json({ error }, { status, headers: { 'Cache-Control': 'no-store' } });
-  const webhook = url.pathname === '/api/webhooks/clerk';
+  
   const origin = request.headers.get('origin');
   // Next may normalize request.url to localhost behind its server adapter.
   // Host is the browser-facing authority; the API also checks the exact APP_ORIGIN.
@@ -17,7 +17,7 @@ export async function proxyApi(request: Request) {
     try { const source = new URL(origin); sameHost = ['http:', 'https:'].includes(source.protocol) && source.host === (request.headers.get('host') || url.host); }
     catch { sameHost = false; }
   }
-  if (methodsWithBody.has(request.method) && !webhook && (request.headers.get('sec-fetch-site') === 'cross-site' || !sameHost)) {
+  if (methodsWithBody.has(request.method) && (request.headers.get('sec-fetch-site') === 'cross-site' || !sameHost)) {
     return fail('This request must come from Readwell', 403);
   }
   try {

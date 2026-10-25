@@ -35,8 +35,9 @@ async function respond(request:Request,posted:boolean) {
       const row=await db.prepare('SELECT data FROM profiles WHERE user_id=?').bind(user.userId).first<{data:string}>();
       if(row)profile=sanitizeProfile(JSON.parse(row.data),profile,new Set(catalog.map(s=>s.id)));
     }
+    const clientIp = request.headers.get('cf-connecting-ip') || request.headers.get('x-real-ip') || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'local';
     const input=feedInput(query,profile,requested||new Date().toISOString());
-    const result=await withDatabaseRetry(()=>queryFeed(db,input,catalog,{pageSize,page:pageNumber,edition:query.get('edition'),cursor:query.get('cursor')==='0'?null:query.get('cursor'),owner:user?`account:${user.userId}`:'guest',clientKey:user?`account:${user.userId}`:`network:${request.headers.get('cf-connecting-ip') || 'local'}`}));
+    const result=await withDatabaseRetry(()=>queryFeed(db,input,catalog,{pageSize,page:pageNumber,edition:query.get('edition'),cursor:query.get('cursor')==='0'?null:query.get('cursor'),owner:user?`account:${user.userId}`:'guest',clientKey:user?`account:${user.userId}`:`network:${clientIp}`}));
     const isGuest = !user && !posted;
     const cacheControl = isGuest
       ? 'public, max-age=60, s-maxage=300, stale-while-revalidate=600'

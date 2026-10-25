@@ -10,7 +10,6 @@ import * as reports from '../backend/routes/reports';
 import * as refresh from '../backend/routes/refresh';
 import * as health from '../backend/routes/health';
 import * as ready from '../backend/routes/ready';
-import * as webhook from '../backend/routes/webhooks/clerk';
 import { loadArticle } from '../lib/server/store';
 import { secureResponse } from '../lib/response-headers';
 import { dispatchApi } from '../backend/router';
@@ -19,7 +18,7 @@ const routes = {
   '/api/articles': articles, '/api/companies': companies, '/api/sources': sources,
   '/api/profile': profile, '/api/engagement': engagement, '/api/account': account,
   '/api/reports': reports, '/api/refresh': refresh, '/api/health': health,
-  '/api/ready': ready, '/api/webhooks/clerk': webhook,
+  '/api/ready': ready,
 };
 
 import { refreshStaleSources } from '../lib/server/refresh';
