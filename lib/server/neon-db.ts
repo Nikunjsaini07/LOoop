@@ -25,6 +25,15 @@ function replaceCallWithCast(sql: string, funcName: string, targetFunc: string):
 }
 
 export function convertSql(query: string): string {
+  if (/FROM\s+sqlite_master\s+WHERE\s+type\s*=\s*['"]?table['"]?/i.test(query)) {
+    return "SELECT table_name AS name FROM information_schema.tables WHERE table_schema = 'public'";
+  }
+  if (/PRAGMA\s+table_info\(([^)]+)\)/i.test(query)) {
+    const match = query.match(/PRAGMA\s+table_info\(([^)]+)\)/i);
+    const tableName = match ? match[1].replace(/['"`]/g, '').trim() : '';
+    return `SELECT column_name AS name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = '${tableName}'`;
+  }
+
   let paramIndex = 1;
   let sql = query.replace(/\?/g, () => `$${paramIndex++}`);
 
