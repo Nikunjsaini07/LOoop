@@ -46,5 +46,5 @@ test('healthy sync stays quiet while saves, failures and conflicts stay actionab
   assert.equal(render(), '');
   assert.match(render({ syncStatus: 'syncing', storageLabel: 'Saving your changes…' }), /Saving changes/);
   assert.match(render({ syncStatus: 'error', mutationError: 'Save failed' }), /Save failed.*Try syncing again/);
-  assert.match(render({ recovery: emptyProfile() }), /Choose which reading copy to keep/);
+  assert.equal(render({ recovery: emptyProfile() }), '');
 });

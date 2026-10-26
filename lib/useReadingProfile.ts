@@ -85,9 +85,8 @@ export function useReadingProfile() {
       setSyncStatus(status);
       setStorageLabel(!storageWorks.current || !owner.current ? "Available in this session"
         : owner.current === ANONYMOUS ? "Sign in to save your reading"
-          : conflicted.current ? "Device copy · account sync conflict"
-            : status === "error" ? "Saved on this device · sync unavailable"
-              : status === "synced" ? "Synced to your account" : "Saved on this device · syncing");
+          : status === "error" ? "Saved on this device · sync unavailable"
+            : status === "synced" ? "Synced to your account" : "Saved on this device · syncing");
     }
 
     function readCopy(key: string, expectedOwner: string): StoredProfile | null {
@@ -136,11 +135,22 @@ export function useReadingProfile() {
         });
         if (!active) return;
         if (response.status === 409) {
-          // Keep this account's device copy; do not retry with a newly fetched version.
-          conflicted.current = true;
+          try {
+            const freshResp = await authRequest("/api/profile", { signal: controller.signal, cache: "no-store" });
+            if (freshResp.ok) {
+              const fresh = await freshResp.json() as { profile: Profile; version: number; generation?: number };
+              serverVersion.current = fresh.version;
+              accountGeneration.current = fresh.generation ?? 0;
+              current.current = mergeProfiles(validate(fresh.profile), current.current);
+              dirty.current = true;
+              persist();
+              queue(200);
+              return;
+            }
+          } catch {}
+          dirty.current = true;
           persist();
           label("error");
-          await refreshAccount(true);
           return;
         }
         if (response.status === 401) remote.current = false;
@@ -206,15 +216,46 @@ function areProfilesEqual(a: Profile | null | undefined, b: Profile | null | und
     JSON.stringify(a.customFeeds) === JSON.stringify(b.customFeeds) &&
     (a.name || '') === (b.name || '') &&
     (a.bio || '') === (b.bio || '')
-  );
-}
+  );}
 
-    function retainCopy(copy: StoredProfile) {
-      recoveryCopy.current = copy;
-      setRecovery(copy.profile);
-      const key = storageKey();
-      if (key) { try { window.localStorage.setItem(`${key}:unsynced`, JSON.stringify(copy)); } catch { storageWorks.current = false; } }
+function mergeProfiles(base: Profile, incoming: Profile): Profile {
+  const bookmarks = Array.from(new Set([...(base.bookmarks || []), ...(incoming.bookmarks || [])]));
+  const readLogMap = new Map<string, (typeof base.readLogs)[0]>();
+  for (const log of [...(base.readLogs || []), ...(incoming.readLogs || [])]) {
+    const existing = readLogMap.get(log.articleId);
+    if (!existing || new Date(log.readAt).getTime() > new Date(existing.readAt).getTime()) {
+      readLogMap.set(log.articleId, log);
     }
+  }
+  const readLogs = Array.from(readLogMap.values());
+  const follows = Array.from(new Set([...(base.follows || []), ...(incoming.follows || [])]));
+  const feedMap = new Map<string, (typeof base.customFeeds)[0]>();
+  for (const feed of [...(base.customFeeds || []), ...(incoming.customFeeds || [])]) {
+    if (!feedMap.has(feed.id)) {
+      feedMap.set(feed.id, feed);
+    }
+  }
+  const customFeeds = Array.from(feedMap.values());
+  const ratingsMap = new Map<string, NonNullable<typeof base.recommendationFeedback>[0]>();
+  for (const rating of [...(base.recommendationFeedback || []), ...(incoming.recommendationFeedback || [])]) {
+    const existing = ratingsMap.get(rating.articleId);
+    if (!existing || new Date(rating.at).getTime() > new Date(existing.at).getTime()) {
+      ratingsMap.set(rating.articleId, rating);
+    }
+  }
+  const recommendationFeedback = Array.from(ratingsMap.values()).slice(0, 500);
+
+  return {
+    ...base,
+    bookmarks,
+    readLogs,
+    follows,
+    customFeeds,
+    recommendationFeedback,
+    name: base.name || incoming.name || "",
+    bio: base.bio || incoming.bio || "",
+  };
+}
 
     async function refreshAccount(preserve = false) {
       if (!active || !remote.current || refreshing) return;
@@ -231,10 +272,13 @@ function areProfilesEqual(a: Profile | null | undefined, b: Profile | null | und
         if (revision.current !== before || (dirty.current && !preserve)) { void flush(); return; }
         if (preserve && dirty.current && (result.generation ?? 0) === accountGeneration.current) {
           if (hasMeaningfulReadingData(current.current) && !areProfilesEqual(current.current, result.profile)) {
-            retainCopy({ format: 1, owner: expectedOwner!, profile: current.current, serverVersion: serverVersion.current, generation: accountGeneration.current, dirty: true });
-          } else {
-            const key = storageKey();
-            if (key) { try { window.localStorage.removeItem(`${key}:unsynced`); } catch {} }
+            current.current = mergeProfiles(validate(result.profile), current.current);
+            serverVersion.current = result.version;
+            accountGeneration.current = result.generation ?? 0;
+            dirty.current = true;
+            persist();
+            queue(200);
+            return;
           }
         }
         current.current = validate(result.profile);
@@ -245,7 +289,8 @@ function areProfilesEqual(a: Profile | null | undefined, b: Profile | null | und
         setProfile(current.current);
         persist();
         label("synced");
-        if (recoveryCopy.current) setStorageLabel("Account loaded · unsynced device copy retained");
+        const key = storageKey();
+        if (key) { try { window.localStorage.removeItem(`${key}:unsynced`); } catch {} }
       } catch (error) {
         const message = error instanceof Error
           ? (error.message.includes("Failed to fetch") ? "Unable to reach the server. Your reading is saved on this device." : error.message)
@@ -255,24 +300,11 @@ function areProfilesEqual(a: Profile | null | undefined, b: Profile | null | und
       finally { refreshing = false; }
     }
 
-    resolveCopy.current = (restore) => {
-      const copy = recoveryCopy.current;
-      if (!copy || copy.owner !== owner.current || !remote.current || conflicted.current) return;
-      if (restore) { try { ensureStorageBudget(copy.profile); } catch (error) { setMutationError(error instanceof Error ? error.message : "Export this device copy before restoring."); return; } }
+    resolveCopy.current = () => {
       recoveryCopy.current = null;
       setRecovery(null);
       const key = storageKey();
-      if (key) { try { window.localStorage.removeItem(`${key}:unsynced`); } catch { /* Keep the working session. */ } }
-      setMutationError("");
-      if (restore) {
-        current.current = copy.profile;
-        revision.current += 1;
-        dirty.current = true;
-        setProfile(copy.profile);
-        persist();
-        label("syncing");
-        queue();
-      } else { persist(); label("synced"); }
+      if (key) { try { window.localStorage.removeItem(`${key}:unsynced`); } catch {} }
     };
 
     async function initialize() {
@@ -306,46 +338,28 @@ function areProfilesEqual(a: Profile | null | undefined, b: Profile | null | und
           const local = readCopy(key, owner.current);
           const serverProfile = validate(result.profile);
           serverVersion.current = result.version;
-        accountGeneration.current = result.generation ?? 0;
+          accountGeneration.current = result.generation ?? 0;
           remote.current = true;
-          // An interrupted navigation can cancel a queued save. Resume only the confirmed
-          // owner's device copy based on exactly this server version; CAS still guards it.
-          if (local?.dirty && local.serverVersion === result.version && (local.generation ?? 0) === accountGeneration.current) {
+          try { window.localStorage.removeItem(`${key}:unsynced`); } catch {}
+
+          if (local?.dirty && (local.generation ?? 0) === accountGeneration.current && hasMeaningfulReadingData(local.profile) && !areProfilesEqual(local.profile, serverProfile)) {
+            const merged = mergeProfiles(serverProfile, local.profile);
+            current.current = merged;
+            dirty.current = true;
+            persist();
+            label("syncing");
+            queue();
+          } else if (local?.dirty && local.serverVersion === result.version && (local.generation ?? 0) === accountGeneration.current) {
             current.current = local.profile;
             dirty.current = true;
             persist();
             label("syncing");
             queue();
           } else {
-            // A changed server version wins. Keep the pending copy separately without replay.
-            let retained = false;
-            recoveryCopy.current = null;
-            setRecovery(null);
-            if (local?.dirty && (local.generation ?? 0) === accountGeneration.current) {
-              if (hasMeaningfulReadingData(local.profile) && !areProfilesEqual(local.profile, serverProfile)) {
-                try { retainCopy(local); retained = true; }
-                catch { storageWorks.current = false; }
-              } else {
-                const k = storageKey();
-                if (k) { try { window.localStorage.removeItem(`${k}:unsynced`); } catch {} }
-              }
-            }
-            if (!retained) {
-              const retainedCopy = readCopy(`${key}:unsynced`, owner.current);
-              if (retainedCopy?.dirty && (retainedCopy.generation ?? 0) === accountGeneration.current) {
-                if (hasMeaningfulReadingData(retainedCopy.profile) && !areProfilesEqual(retainedCopy.profile, serverProfile)) {
-                  retainCopy(retainedCopy);
-                  retained = true;
-                } else {
-                  try { window.localStorage.removeItem(`${key}:unsynced`); } catch {}
-                }
-              }
-            }
             current.current = serverProfile;
             dirty.current = false;
             persist();
             label("synced");
-            if (retained && active) { setSyncStatus("error"); setStorageLabel("Account loaded · unsynced device copy retained"); }
           }
         }
       } catch {
@@ -395,7 +409,6 @@ function areProfilesEqual(a: Profile | null | undefined, b: Profile | null | und
   const commit = useCallback((next: Profile) => {
     if (!isReady.current) return false;
     if (!owner.current) { setMutationError("Your account has not loaded. Try syncing again before making changes."); return false; }
-    if (recoveryCopy.current) { setMutationError("Review your unsynced device copy before making more changes."); return false; }
     try {
       const validated = validate(next);
       ensureStorageBudget(validated);
@@ -407,11 +420,10 @@ function areProfilesEqual(a: Profile | null | undefined, b: Profile | null | und
       persistCopy.current();
       if (!storageWorks.current || !owner.current) setStorageLabel("Available in this session");
       else if (owner.current === ANONYMOUS) setStorageLabel("Saved on this device");
-      else if (conflicted.current) setStorageLabel("Device copy · account sync conflict");
       else if (!remote.current) setStorageLabel("Saved on this device · sync unavailable");
       else setStorageLabel("Saved on this device · syncing");
-      setSyncStatus(conflicted.current || (!remote.current && owner.current !== ANONYMOUS) ? "error" : remote.current ? "syncing" : "local");
-      if (remote.current && !conflicted.current) scheduleSave.current();
+      setSyncStatus(!remote.current && owner.current !== ANONYMOUS ? "error" : remote.current ? "syncing" : "local");
+      if (remote.current) scheduleSave.current();
       return true;
     } catch (error) {
       setMutationError(error instanceof Error ? error.message : "Your change could not be saved.");
