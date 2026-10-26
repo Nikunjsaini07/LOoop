@@ -72,6 +72,7 @@ export function useReadingProfile() {
     let active = true;
     let saving = false;
     let retries = 0;
+    let conflictRetries = 0;
     let refreshing = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
     const controller = new AbortController();
@@ -117,8 +118,8 @@ export function useReadingProfile() {
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => { timer = null; void flush(); }, delay);
     }
-    scheduleSave.current = () => { retries = 0; queue(); };
-    retrySave.current = () => { retries = 0; if (conflicted.current) void refreshAccount(true); else if (remote.current) void flush(); else void initialize(); };
+    scheduleSave.current = () => { retries = 0; conflictRetries = 0; queue(); };
+    retrySave.current = () => { retries = 0; conflictRetries = 0; if (conflicted.current) void refreshAccount(true); else if (remote.current) void flush(); else void initialize(); };
 
     async function flush() {
       if (!active || !isReady.current || !remote.current || conflicted.current || saving || !dirty.current) return;
@@ -135,6 +136,13 @@ export function useReadingProfile() {
         });
         if (!active) return;
         if (response.status === 409) {
+          conflictRetries++;
+          if (conflictRetries > 3) {
+            dirty.current = false;
+            persist();
+            label("synced");
+            return;
+          }
           try {
             const freshResp = await authRequest("/api/profile", { signal: controller.signal, cache: "no-store" });
             if (freshResp.ok) {
@@ -167,6 +175,7 @@ export function useReadingProfile() {
         accountGeneration.current = result.generation ?? 0;
         succeeded = true;
         retries = 0;
+        conflictRetries = 0;
         setMutationError("");
         for (const [id, stats] of Object.entries(result.stats ?? {})) announceEngagement(id, stats);
         setCommunityStatus("synced");

@@ -97,20 +97,41 @@ class PreparedStatement implements D1PreparedStatement {
 
   async all<T = unknown>(): Promise<{ results: T[]; success: boolean; meta: Record<string, unknown> }> {
     const converted = convertSql(this.rawQuery);
-    const rows = (await this.client.query(converted, this.params)) as T[];
+    const queryFn = (this.client as unknown as { query: (sql: string, params: unknown[], opts?: { fullResults?: boolean }) => Promise<unknown> }).query;
+    let res: unknown;
+    if (typeof queryFn === 'function') {
+      res = await queryFn.call(this.client, converted, this.params, { fullResults: true });
+    } else {
+      res = await this.client.query(converted, this.params);
+    }
+    const isFull = res && typeof res === 'object' && !Array.isArray(res) && 'rows' in res;
+    const rows = (isFull ? (res as { rows: T[] }).rows : (Array.isArray(res) ? res : [])) as T[];
+    const isWrite = /^\s*(INSERT|UPDATE|DELETE|REPLACE)\b/i.test(this.rawQuery);
+    const rowCount = (res as { rowCount?: unknown })?.rowCount;
+    const changes = isFull && typeof rowCount === 'number'
+      ? rowCount
+      : (isWrite ? 1 : 0);
     return {
       results: rows,
       success: true,
-      meta: { changes: 0, served_by: 'neon-postgresql' },
+      meta: { changes, served_by: 'neon-postgresql' },
     };
   }
 
   async run(): Promise<{ success: boolean; meta: Record<string, unknown> }> {
     const converted = convertSql(this.rawQuery);
-    await this.client.query(converted, this.params);
+    const queryFn = (this.client as unknown as { query: (sql: string, params: unknown[], opts?: { fullResults?: boolean }) => Promise<unknown> }).query;
+    let res: unknown;
+    if (typeof queryFn === 'function') {
+      res = await queryFn.call(this.client, converted, this.params, { fullResults: true });
+    } else {
+      res = await this.client.query(converted, this.params);
+    }
+    const rowCount = (res as { rowCount?: unknown })?.rowCount;
+    const changes = typeof rowCount === 'number' ? rowCount : 1;
     return {
       success: true,
-      meta: { changes: 1, served_by: 'neon-postgresql' },
+      meta: { changes, served_by: 'neon-postgresql' },
     };
   }
 
@@ -140,17 +161,28 @@ export function createNeonDatabase(connectionString: string): NeonD1Database {
       if (!statements.length) return [];
       try {
         if (typeof client.transaction === 'function') {
-          const queryResults = await client.transaction(txn =>
-            statements.map(stmt => {
+          const queryResults = await client.transaction(
+            txn => statements.map(stmt => {
               const ps = stmt as PreparedStatement;
               return txn.query(ps.getSql(), (ps.getParams() ?? []) as unknown[]);
-            })
-          );
-          return (queryResults ?? []).map(rows => ({
-            results: (rows ?? []) as unknown[],
-            success: true,
-            meta: { changes: 0, served_by: 'neon-postgresql-transaction' },
-          }));
+            }),
+            { fullResults: true } as unknown as Parameters<typeof client.transaction>[1]
+          ) as unknown[];
+          return (queryResults ?? []).map((res, i) => {
+            const isFull = res && typeof res === 'object' && !Array.isArray(res) && 'rows' in res;
+            const rows = (isFull ? (res as { rows: unknown[] }).rows : (Array.isArray(res) ? res : [])) as unknown[];
+            const ps = statements[i] as PreparedStatement;
+            const isWrite = /^\s*(INSERT|UPDATE|DELETE|REPLACE)\b/i.test(ps.getSql());
+            const rowCount = (res as { rowCount?: unknown })?.rowCount;
+            const changes = isFull && typeof rowCount === 'number'
+              ? rowCount
+              : (isWrite ? 1 : 0);
+            return {
+              results: rows,
+              success: true,
+              meta: { changes, served_by: 'neon-postgresql-transaction' },
+            };
+          });
         }
       } catch {
         // Fall back to sequential execution if transaction mode encounters an incompatibility
