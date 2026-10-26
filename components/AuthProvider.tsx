@@ -89,7 +89,11 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       setSession(currentSession);
       setReady(true);
       if (currentSession && typeof window !== 'undefined' && window.location.hash.includes('access_token')) {
-        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        const cleanUrl = new URL(window.location.href);
+        cleanUrl.hash = '';
+        cleanUrl.searchParams.delete('auth');
+        const query = cleanUrl.searchParams.toString();
+        window.history.replaceState(null, '', cleanUrl.pathname + (query ? `?${query}` : ''));
       }
     });
 

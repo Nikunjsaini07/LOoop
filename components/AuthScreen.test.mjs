@@ -56,16 +56,17 @@ test('sign-up has its own heading while retaining the same loading and recovery 
   assert.match(html, /Try again/);
 });
 
-test('sign-up form includes a full name field while sign-in requires only email and password', () => {
+test('authentication uses Google exclusively with no manual email or password fields', () => {
   const signUpHtml = render('/profile', 'loaded', 'sign-up');
-  assert.match(signUpHtml, /id="auth-name"/);
-  assert.match(signUpHtml, /Full name/);
-  assert.match(signUpHtml, /id="auth-email"/);
-  assert.match(signUpHtml, /id="auth-password"/);
+  assert.match(signUpHtml, /Sign in with Google/);
+  assert.doesNotMatch(signUpHtml, /id="auth-name"/);
+  assert.doesNotMatch(signUpHtml, /id="auth-email"/);
+  assert.doesNotMatch(signUpHtml, /id="auth-password"/);
 
   const signInHtml = render('/profile', 'loaded', 'sign-in');
+  assert.match(signInHtml, /Sign in with Google/);
   assert.doesNotMatch(signInHtml, /id="auth-name"/);
-  assert.doesNotMatch(signInHtml, /Full name/);
-  assert.match(signInHtml, /id="auth-email"/);
-  assert.match(signInHtml, /id="auth-password"/);
+  assert.doesNotMatch(signInHtml, /id="auth-email"/);
+  assert.doesNotMatch(signInHtml, /id="auth-password"/);
 });
+
