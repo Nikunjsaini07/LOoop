@@ -18,7 +18,8 @@ const Link='a',BrandLogo=()=>null,ThemeToggle=()=>null;
 const ArrowLeft=()=>null,ArrowRight=()=>null,Bookmark=()=>null,LoaderCircle=()=>null,RefreshCw=()=>null;
 const ClerkLoading=({children})=>context.status==='loading'?children:null;
 const ClerkFailed=({children})=>context.status==='error'?children:null;
-const ClerkLoaded=({children})=>context.status==='loaded'?children:null,SignIn=()=>null,SignUp=()=>null;`;
+const ClerkLoaded=({children})=>context.status==='loaded'?children:null,SignIn=()=>null,SignUp=()=>null;
+const useAuth=()=>({isLoaded:context.status==='loaded',isSignedIn:false});`;
 const { default: AuthScreen } = await import(`data:text/javascript;base64,${Buffer.from(prelude + compiled).toString('base64')}`);
 const render = (path, status = 'loading', mode = 'sign-in') => {
   Object.assign(globalThis.__authScreenTest, { path, status });

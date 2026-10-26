@@ -63,8 +63,7 @@ function getInitialAuthError(): string | null {
 
 export default function AuthScreen({ mode = 'sign-in' }: { mode?: 'sign-in' | 'sign-up' }) {
   const returnTo = useSyncExternalStore(subscribeLocation, returnPath, () => '/profile');
-  const auth = typeof useAuth === 'function' ? useAuth() : { isLoaded: false, isSignedIn: false };
-  const { isLoaded, isSignedIn } = auth;
+  const { isLoaded, isSignedIn } = useAuth();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(getInitialAuthError);
 
