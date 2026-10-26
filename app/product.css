@@ -1,8 +1,8 @@
 /* Product controls share Readwell's paper, ink, and single sky accent. */
 .reading-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 0 0 14px; }
 .reading-toolbar > div, .sync-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; }
-.reading-toolbar .edition-select select { font-size: 14px; min-height: 44px; max-width: 230px; padding: 8px 26px 8px 0; color: var(--ink); }
-.reading-toolbar .text-button { min-height: 44px; font-size: 12px; }
+.reading-toolbar .edition-select select { font-size: 13px; min-height: 40px; max-width: 230px; padding: 7px 34px 7px 14px; color: var(--ink); }
+.reading-toolbar .text-button { min-height: 40px; font-size: 12px; }
 .sync-notice { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 20px; margin: 24px 0; padding: 14px 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); color: var(--muted); font-size: 13px; line-height: 1.6; }
 .sync-notice p { margin: 0; }
 .sync-saving { position: fixed; right: 20px; bottom: 20px; z-index: 30; margin: 0; padding: 10px 16px; border: 1px solid var(--line); border-radius: 24px; background: var(--paper); color: var(--muted); font: 12px/1.5 var(--sans); box-shadow: 0 2px 12px #0000000a; pointer-events: none; }
@@ -18,9 +18,17 @@
 .source-status, .source-health { font: 12px/1.6 var(--sans); color: var(--muted); }
 .source-health, .source-original { margin-top: 14px; }
 .source-status { padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; }
-.library-controls { display: flex; gap: 12px; margin: 8px 0 20px; }
+.library-controls { display: flex; gap: 12px; margin: 8px 0 20px; align-items: center; }
 .library-controls > label:first-child { flex: 1; min-width: 0; }
-.library-controls :is(input,select) { width: 100%; min-height: 44px; background: var(--paper); color: var(--ink); border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; font: 13px var(--sans); }
+.library-search-wrap input[type="search"] { width: 100%; min-height: 40px; background: var(--surface); color: var(--ink); border: 1px solid var(--border-subtle); border-radius: 999px; padding: 8px 16px; font: 13px var(--sans); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04); transition: border-color 150ms ease, box-shadow 150ms ease; }
+.library-search-wrap input[type="search"]:hover { border-color: var(--border-hover); }
+.library-search-wrap input[type="search"]:focus-visible { outline: none; border-color: var(--ink); box-shadow: 0 0 0 2px var(--selection); }
+.library-select-wrap { position: relative; display: inline-flex; align-items: center; flex-shrink: 0; }
+.library-select-wrap select { appearance: none; -webkit-appearance: none; -moz-appearance: none; min-height: 40px; padding: 8px 34px 8px 16px; background: var(--surface); color: var(--ink); border: 1px solid var(--border-subtle); border-radius: 999px; font: 500 13px/20px var(--sans); cursor: pointer; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04); transition: border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease; outline: none; }
+.library-select-wrap select:hover { border-color: var(--border-hover); background: var(--surface-hover); }
+.library-select-wrap select:focus-visible { outline: none; border-color: var(--ink); box-shadow: 0 0 0 2px var(--selection); }
+.library-select-wrap svg { position: absolute; right: 14px; pointer-events: none; color: var(--text-muted); transition: color 150ms ease; }
+.library-select-wrap:hover svg { color: var(--ink); }
 .profile-feed > a { display: flex; align-items: center; gap: 10px; }
 .profile-feed > a:hover { text-decoration: underline; text-underline-offset: 4px; }
 .settings-main { padding-top: 52px; }

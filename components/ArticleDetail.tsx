@@ -8,6 +8,7 @@ import type { Article } from "@/lib/types";
 import CompanyLogo from "./CompanyLogo";
 import CommunityStats from "./CommunityStats";
 import { useEngagementTotals } from "@/lib/useEngagementTotals";
+import { announceEngagement } from "@/lib/community-events";
 import SiteHeader from "./SiteHeader";
 import { publisherExcerpt } from "@/lib/article-copy";
 import ReportStory from "./ReportStory";
@@ -25,8 +26,18 @@ export default function ArticleDetail({ article, returnTo = "/" }: { article: Ar
   const publisher = new URL(article.url).hostname.replace(/^www\./, "");
   const abstract = publisherExcerpt(article);
   const logRead = () => {
+    const currentStats = totals[article.id] ?? article.engagement ?? { reads: 0, saves: 0 };
+    const nextReads = Math.max(0, currentStats.reads + (readLog ? -1 : 1));
+    announceEngagement(article.id, { ...currentStats, reads: nextReads });
     try { toggleReadLog(article); setMessage(""); }
     catch (error) { setMessage(error instanceof Error ? error.message : "Your reading log could not be updated. Try again."); }
+  };
+
+  const handleBookmark = () => {
+    const currentStats = totals[article.id] ?? article.engagement ?? { reads: 0, saves: 0 };
+    const nextSaves = Math.max(0, currentStats.saves + (saved ? -1 : 1));
+    announceEngagement(article.id, { ...currentStats, saves: nextSaves });
+    toggleBookmark(article);
   };
 
   return <div className="publication view-article">
@@ -49,12 +60,12 @@ export default function ArticleDetail({ article, returnTo = "/" }: { article: Ar
         </section>
         <a className="detail-publisher-link" href={article.url} target="_blank" rel="noopener noreferrer" onClick={() => recordOpen(article)}><span><strong>Read the original article</strong><small>{publisher}</small></span><ArrowUpRight size={20} strokeWidth={1.5} /></a>
         <section className="detail-log tray" aria-labelledby="reading-log-heading">
-          <div className="detail-log-sheet sheet"><div className="detail-log-copy"><span className="log-glyph" aria-hidden="true">{readLog ? <Check size={18} /> : <BookOpenCheck size={18} strokeWidth={1.5} />}</span><div><h2 id="reading-log-heading">Your reading log</h2><p>{readLog ? `Read · ${dateLabel(readLog.readAt)}` : "Finished the original? Keep a record."}</p></div></div><button className={`ink-button read-log-button${readLog ? " is-logged" : ""}`} aria-pressed={!!readLog} onClick={logRead}>{readLog ? <Check size={14} /> : <BookOpenCheck size={14} />}{readLog ? "Logged as read" : "Log as read"}</button></div>
+          <div className="detail-log-sheet sheet"><div className="detail-log-copy"><span className="log-glyph" aria-hidden="true">{readLog ? <Check size={18} /> : <BookOpenCheck size={18} strokeWidth={1.5} />}</span><div><h2 id="reading-log-heading">Your reading log</h2><p>{readLog ? `Logged · ${dateLabel(readLog.readAt)}` : "Finished the original? Keep a record."}</p></div></div><button className={`ink-button read-log-button${readLog ? " is-logged" : ""}`} aria-pressed={!!readLog} onClick={logRead}>{readLog ? <Check size={14} /> : <BookOpenCheck size={14} />}{readLog ? "Logged" : "Log"}</button></div>
           <div className="detail-log-footer"><span>{readLog ? "Click again to undo." : "Only you decide when it’s read."}</span><a href="/profile?tab=read-log">View reading log <ArrowRight size={11} /></a></div>
         </section>
         {message && <p className="detail-message" role="alert">{message}</p>}
         {communityStatus === "error" && <p className="detail-message" role="status">Your personal log is saved. Community activity could not be synced.</p>}
-        <div className="detail-secondary-actions"><button className="text-button" aria-pressed={saved} onClick={() => toggleBookmark(article)}><Bookmark size={14} fill={saved ? "currentColor" : "none"} />{saved ? "Bookmarked" : "Save for later"}</button></div>
+        <div className="detail-secondary-actions"><button className="text-button" aria-pressed={saved} onClick={handleBookmark}><Bookmark size={14} fill={saved ? "currentColor" : "none"} />{saved ? "Saved" : "Save"}</button></div>
         {ready && syncStatus === "local" && <p className="detail-sync-link"><a href={`/sign-in?return_to=${encodeURIComponent(`/articles/${article.id}`)}`}>Sign in to save blogs and log reads <ArrowUpRight size={11} /></a></p>}
         {ready && syncStatus !== "local" && <p className="detail-sync-link">Your bookmarks and read logs help shape Trending. Undoing an action updates the totals.</p>}
       </article>

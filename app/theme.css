@@ -43,10 +43,16 @@
 }
 
 ::selection { background: var(--selection); color: var(--selection-ink); }
-/* Windows native popups need explicit option colors as well as color-scheme. */
-select { color-scheme: inherit; }
-select option, select optgroup { background-color: var(--paper); color: var(--ink); }
+/* Windows and browser native popups need explicit color-scheme and option colors to match the theme. */
+select { color-scheme: light; }
+:root.dark select, .dark select { color-scheme: dark; }
+select option, select optgroup { background-color: var(--surface); color: var(--ink); }
+:root.dark select option, .dark select option,
+:root.dark select optgroup, .dark select optgroup { background-color: #242c31; color: #e7ebed; }
 select option:disabled { color: var(--muted); }
+:root.dark select option:disabled, .dark select option:disabled { color: #71838e; }
+select option:checked { background-color: var(--selection); color: var(--selection-ink); }
+:root.dark select option:checked, .dark select option:checked { background-color: #405e6d; color: #f3f7fa; }
 .theme-toggle {
   display: inline-grid;
   place-items: center;
@@ -235,6 +241,23 @@ select option:disabled { color: var(--muted); }
 .dark .activity-level-2 { --dot-ink: #9cc9de; }
 .dark .activity-level-3 { --dot-ink: #d4e8f2; }
 .dark .activity-selected::before { box-shadow: 0 0 0 2px var(--paper), 0 0 0 3px var(--accent); }
+.dark .edition-select,
+.dark .feed-filter-select-wrap select,
+.dark .library-select-wrap select,
+.dark .library-search-wrap input[type="search"],
+.dark .report-select-wrap select {
+  background: var(--surface);
+  border-color: var(--border-subtle);
+  color: var(--ink);
+}
+.dark .edition-select:hover,
+.dark .feed-filter-select-wrap select:hover,
+.dark .library-select-wrap select:hover,
+.dark .library-search-wrap input[type="search"]:hover,
+.dark .report-select-wrap select:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-hover);
+}
 .auth-page { position: relative; }
 .auth-page > .theme-toggle { position: absolute; top: 24px; right: 20px; }
 @media (max-width: 480px) {

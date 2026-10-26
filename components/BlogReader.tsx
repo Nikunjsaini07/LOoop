@@ -8,7 +8,7 @@ import { HOME_TOPICS } from "@/lib/topics";
 import CompanyLogo from "./CompanyLogo";
 import FeedPagination from "./FeedPagination";
 import { useEngagementTotals } from "@/lib/useEngagementTotals";
-import { COMMUNITY_EVENT, type CommunityTotals } from "@/lib/community-events";
+import { COMMUNITY_EVENT, announceEngagement, type CommunityTotals } from "@/lib/community-events";
 import SiteHeader from "./SiteHeader";
 import { useAuthRequest, useRequireAccount, useAccountId } from "./AuthProvider";
 import ProfileAccess from "./ProfileAccess";
@@ -31,6 +31,8 @@ const domain = (url: string) => { try { return new URL(url).hostname.replace(/^w
 function StoryCard({ article, returnTo, rank, saved, logged, stats, feedback, onFeedback, onSave, onLog, onTopic, onOriginal }: { article: Article; returnTo: string; rank?: number; saved: boolean; logged: boolean; ready?: boolean; stats?: CommunityTotals; feedback?: "useful" | "not-relevant"; onFeedback: (value:"useful"|"not-relevant")=>void; onSave: () => void; onLog: () => void; onTopic: (value: string) => void; onOriginal: () => void }) {
   const excerpt = publisherExcerpt(article);
   const historical = article.recommendationLane === "archive" && rank === undefined;
+  const totalSaves = stats?.saves ?? 0;
+  const totalReads = stats?.reads ?? 0;
   return <article id={`story-${article.id}`} className={`article-card tray${rank!==undefined ? " ranked-story" : ""}${historical ? " archive-story" : ""}`}>
     <div className="article-sheet sheet">
       <div className="article-topline">
@@ -52,8 +54,8 @@ function StoryCard({ article, returnTo, rank, saved, logged, stats, feedback, on
         {feedback && <p role="status">{feedback==="useful"?"Noted for your next feed. Tap again to undo.":"We’ll adjust your next feed. Tap again to undo."}</p>}
       </div>}
       <div className="story-actions" aria-label="Community activity">
-        <button className={saved?"is-active":""} aria-pressed={saved} aria-label={`${saved ? "Remove bookmark for" : "Bookmark"} ${article.title}`} onClick={onSave}><Bookmark size={14} strokeWidth={1.5} fill={saved?"currentColor":"none"}/><span>{saved ? "Saved" : "Save"}</span>{!!stats?.saves && <strong aria-label={`${stats.saves} total bookmarks`}>{stats.saves.toLocaleString()}</strong>}</button>
-        <button className={logged?"is-active":""} aria-pressed={logged} aria-label={`${logged ? "Undo read log for" : "Log as read:"} ${article.title}`} onClick={onLog}><BookOpenCheck size={14} strokeWidth={1.5}/><span>{logged ? "Read" : "Log as read"}</span>{!!stats?.reads && <strong aria-label={`${stats.reads} total read logs`}>{stats.reads.toLocaleString()}</strong>}</button>
+        <button className={saved?"is-active":""} aria-pressed={saved} aria-label={`${saved ? "Unsave" : "Save"} ${article.title}`} onClick={onSave}><Bookmark size={14} strokeWidth={1.5} fill={saved?"currentColor":"none"}/><span>{saved ? "Saved" : "Save"}</span><strong aria-label={`${totalSaves} total bookmarks`}>{totalSaves.toLocaleString()}</strong></button>
+        <button className={logged?"is-active":""} aria-pressed={logged} aria-label={`${logged ? "Unlog" : "Log"} ${article.title}`} onClick={onLog}><BookOpenCheck size={14} strokeWidth={1.5}/><span>{logged ? "Logged" : "Log"}</span><strong aria-label={`${totalReads} total read logs`}>{totalReads.toLocaleString()}</strong></button>
       </div>
     </div>
     <div className="article-footer"><div className="article-topics">{visibleTopics(article).slice(0, 2).map((value) => <button className="article-topic" key={value} onClick={() => onTopic(value)}>{value}</button>)}</div><div className="story-links"><a className="original-link" href={article.url} target="_blank" rel="noopener noreferrer" onClick={onOriginal}>Original <ArrowUpRight size={13} /></a><a className="original-link" href={articlePath(article.id, returnTo.split("#")[0] + `#story-${article.id}`)}>Details <ArrowRight size={13} /></a></div></div>
@@ -371,7 +373,23 @@ export default function BlogReader({ initial, initialView = "home", initialLocat
   const stories = sortedStories;
   const featured = view === "home" && pageNumber===1 ? stories[0] ?? null : null;
   const remaining = featured ? stories.filter((article) => article.id !== featured.id) : stories;
-  const renderStory = (article: Article, index?: number) => <StoryCard key={article.id} article={article} returnTo={returnTo} rank={index} ready={ready} saved={profile.bookmarks.includes(article.id)} logged={profile.readLogs.some(log=>log.articleId===article.id)} stats={totals[article.id]} onOriginal={() => recordOpen(article)} feedback={profile.recommendationFeedback?.find(item=>item.articleId===article.id)?.value} onFeedback={(value)=>rateRecommendation(article,value)} onSave={() => toggleBookmark(article)} onLog={() => toggleReadLog(article)} onTopic={(value) => { setTopic(value); setSearchOpen(true); if (view !== "home") navigate("home"); }} />;
+  const handleSave = (article: Article) => {
+    const isSaved = profile.bookmarks.includes(article.id);
+    const currentStats = totals[article.id] ?? article.engagement ?? { reads: 0, saves: 0 };
+    const nextSaves = Math.max(0, currentStats.saves + (isSaved ? -1 : 1));
+    announceEngagement(article.id, { ...currentStats, saves: nextSaves });
+    toggleBookmark(article);
+  };
+
+  const handleLog = (article: Article) => {
+    const isLogged = profile.readLogs.some(log => log.articleId === article.id);
+    const currentStats = totals[article.id] ?? article.engagement ?? { reads: 0, saves: 0 };
+    const nextReads = Math.max(0, currentStats.reads + (isLogged ? -1 : 1));
+    announceEngagement(article.id, { ...currentStats, reads: nextReads });
+    toggleReadLog(article);
+  };
+
+  const renderStory = (article: Article, index?: number) => <StoryCard key={article.id} article={article} returnTo={returnTo} rank={index} ready={ready} saved={profile.bookmarks.includes(article.id)} logged={profile.readLogs.some(log=>log.articleId===article.id)} stats={totals[article.id]} onOriginal={() => recordOpen(article)} feedback={profile.recommendationFeedback?.find(item=>item.articleId===article.id)?.value} onFeedback={(value)=>rateRecommendation(article,value)} onSave={() => handleSave(article)} onLog={() => handleLog(article)} onTopic={(value) => { setTopic(value); setSearchOpen(true); if (view !== "home") navigate("home"); }} />;
 
   return <div className={`publication view-${view}`}>
     <a className="skip-link" href="#reading-surface">Skip to your reading</a>
