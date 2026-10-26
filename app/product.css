@@ -168,36 +168,7 @@
   color: var(--text-subtle);
 }
 
-.settings-accordion-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 36px;
-  color: var(--ink);
-  font-weight: 500;
-  cursor: pointer;
-}
-.settings-password-box {
-  margin-top: 14px;
-  padding: 18px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  background: var(--surface);
-}
-.settings-password-hint {
-  font: 13px/1.5 var(--sans);
-  color: var(--text-secondary);
-  margin: 0 0 14px;
-}
-.settings-password-form {
-  display: grid;
-  gap: 14px;
-  max-width: 420px;
-}
-.settings-password-form .ink-button {
-  margin-top: 4px;
-  align-self: flex-start;
-}
+
 .account-security-actions {
   display: flex;
   flex-wrap: wrap;
@@ -308,8 +279,7 @@
 }
 .dark .library-stat-card,
 .dark .policy-card-item,
-.dark .account-identity-box,
-.dark .settings-password-box {
+.dark .account-identity-box {
   background: var(--surface);
   border-color: var(--line);
 }

@@ -1,10 +1,9 @@
-"use client";
+'use client';
 
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
 import { useClerk, useAuthRequest, useCurrentUser } from "./AuthProvider";
 import { useReadingProfile } from "@/lib/useReadingProfile";
 import { downloadJson } from "@/lib/download-json";
-import { supabase } from "@/lib/supabase";
 import SiteHeader from "./SiteHeader";
 import ProfileAccess from "./ProfileAccess";
 import ProfileSyncNotice from "./ProfileSyncNotice";
@@ -12,7 +11,6 @@ import Link from "./PageLink";
 import {
   ShieldCheck,
   Mail,
-  KeyRound,
   Download,
   AlertTriangle,
   LogOut,
@@ -21,9 +19,6 @@ import {
   Bookmark,
   Building2,
   SlidersHorizontal,
-  ChevronDown,
-  ChevronUp,
-  LoaderCircle,
   EyeOff,
   Sparkles,
   Database,
@@ -40,13 +35,6 @@ export default function AccountSettings() {
   const [message, setMessage] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [deleteIdentity, setDeleteIdentity] = useState(false);
-
-  // In-line password management
-  const [showPasswordForm, setShowPasswordForm] = useState(false);
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [passwordStatus, setPasswordStatus] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const [passwordBusy, setPasswordBusy] = useState(false);
 
   const download = async () => {
     setBusy("download");
@@ -101,38 +89,7 @@ export default function AccountSettings() {
     }
   };
 
-  const handlePasswordUpdate = async (e: FormEvent) => {
-    e.preventDefault();
-    if (newPassword.length < 6) {
-      setPasswordStatus({ type: "error", text: "Password must be at least 6 characters long." });
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setPasswordStatus({ type: "error", text: "Passwords do not match." });
-      return;
-    }
-    setPasswordBusy(true);
-    setPasswordStatus(null);
-    try {
-      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
-      if (updateError) throw updateError;
-      setPasswordStatus({ type: "success", text: "Your password has been successfully updated." });
-      setNewPassword("");
-      setConfirmPassword("");
-    } catch (err) {
-      setPasswordStatus({
-        type: "error",
-        text: err instanceof Error ? err.message : "Failed to update password. Try again.",
-      });
-    } finally {
-      setPasswordBusy(false);
-    }
-  };
 
-  const provider =
-    (user?.app_metadata?.provider as string | undefined) ||
-    (user?.identities?.[0]?.provider as string | undefined) ||
-    "email";
 
   const displayName =
     reading.profile.name ||
@@ -141,8 +98,7 @@ export default function AccountSettings() {
     user?.email?.split('@')[0] ||
     "Reader";
 
-  const providerLabel =
-    provider === "google" ? "Google Account" : provider === "github" ? "GitHub Account" : "Email & Password";
+  const providerLabel = "Google Account";
 
   const memberSince = user?.created_at
     ? new Date(user.created_at).toLocaleDateString("en-US", { month: "short", year: "numeric" })
@@ -165,7 +121,7 @@ export default function AccountSettings() {
               Manage sign-in &amp; <em>reading data</em>
             </h1>
             <p className="settings-subtitle">
-              Your credentials and reading belong to you. Update your security, inspect what is stored, or download your data.
+              Your identity and reading belong to you. Inspect what is stored or download your data anytime.
             </p>
           </header>
 
@@ -175,10 +131,10 @@ export default function AccountSettings() {
           <section className="settings-section-card" aria-labelledby="section-security-title">
             <div className="settings-card-header">
               <ShieldCheck size={22} aria-hidden="true" />
-              <h2 id="section-security-title">Sign-in &amp; credentials</h2>
+              <h2 id="section-security-title">Sign-in &amp; identity</h2>
             </div>
             <p className="settings-card-desc">
-              Your authenticated identity, active session, and credentials used to sign in to Readwell.
+              Your authenticated Google identity and active session on Readwell.
             </p>
 
             <div className="account-identity-box">
@@ -200,83 +156,6 @@ export default function AccountSettings() {
                   </div>
                 </div>
               </div>
-            </div>
-
-            {/* Password Update Accordion */}
-            <div className="settings-password-section">
-              <button
-                type="button"
-                className="text-button settings-accordion-toggle"
-                onClick={() => {
-                  setShowPasswordForm((v) => !v);
-                  setPasswordStatus(null);
-                }}
-                aria-expanded={showPasswordForm}
-              >
-                <KeyRound size={14} aria-hidden="true" />
-                <span>
-                  {showPasswordForm
-                    ? "Hide password change"
-                    : provider === "google"
-                    ? "Set account password"
-                    : "Change password"}
-                </span>
-                {showPasswordForm ? <ChevronUp size={14} aria-hidden="true" /> : <ChevronDown size={14} aria-hidden="true" />}
-              </button>
-
-              {showPasswordForm && (
-                <div className="settings-password-box">
-                  {provider === "google" && (
-                    <p className="settings-password-hint">
-                      Setting a password lets you sign in using either Google or your email address anytime.
-                    </p>
-                  )}
-                  <form onSubmit={handlePasswordUpdate} className="settings-password-form">
-                    {passwordStatus && (
-                      <div
-                        className={passwordStatus.type === "success" ? "supabase-success" : "supabase-error"}
-                        role="alert"
-                      >
-                        {passwordStatus.text}
-                      </div>
-                    )}
-                    <div className="supabase-field">
-                      <label htmlFor="new-password">New password</label>
-                      <input
-                        id="new-password"
-                        type="password"
-                        required
-                        minLength={6}
-                        placeholder="••••••••"
-                        className="supabase-input"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        disabled={passwordBusy}
-                        autoComplete="new-password"
-                      />
-                    </div>
-                    <div className="supabase-field">
-                      <label htmlFor="confirm-password">Confirm new password</label>
-                      <input
-                        id="confirm-password"
-                        type="password"
-                        required
-                        minLength={6}
-                        placeholder="••••••••"
-                        className="supabase-input"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        disabled={passwordBusy}
-                        autoComplete="new-password"
-                      />
-                    </div>
-                    <button type="submit" className="ink-button" disabled={passwordBusy}>
-                      {passwordBusy && <LoaderCircle size={14} className="auth-spinner" aria-hidden="true" />}
-                      <span>{passwordBusy ? "Updating password…" : "Save new password"}</span>
-                    </button>
-                  </form>
-                </div>
-              )}
             </div>
 
             <div className="account-security-actions">
