@@ -10,8 +10,13 @@ export async function GET(request: Request) {
   const returnTo = requestUrl.searchParams.get('return_to') || requestUrl.searchParams.get('next') || '/';
 
   if (code) {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://bkfxvxkdasxqlmzyjpoz.supabase.co';
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_OYbHXFEQ1JCkjB_5NCIeXQ_QqUTQB7N';
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error('Supabase configuration missing in auth callback');
+      return NextResponse.redirect(`${requestUrl.origin}/sign-in?error=config_error`);
+    }
 
     const cookieStore = await cookies();
     const supabase = createServerClient(
@@ -36,19 +41,25 @@ export async function GET(request: Request) {
     );
 
     const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) {
-      const forwardedHost = request.headers.get('x-forwarded-host');
-      const isLocalEnv = process.env.NODE_ENV === 'development';
-      if (isLocalEnv) {
-        return NextResponse.redirect(`${requestUrl.origin}${returnTo}`);
-      } else if (forwardedHost) {
-        return NextResponse.redirect(`https://${forwardedHost}${returnTo}`);
-      } else {
-        return NextResponse.redirect(`${requestUrl.origin}${returnTo}`);
-      }
+    
+    if (error) {
+      console.error('Supabase auth exchange error:', error.message);
+      return NextResponse.redirect(`${requestUrl.origin}/sign-in?error=auth_exchange_failed`);
+    }
+
+    // Successful authentication - redirect to return path
+    const forwardedHost = request.headers.get('x-forwarded-host');
+    const isLocalEnv = process.env.NODE_ENV === 'development';
+    
+    if (isLocalEnv) {
+      return NextResponse.redirect(`${requestUrl.origin}${returnTo}`);
+    } else if (forwardedHost) {
+      return NextResponse.redirect(`https://${forwardedHost}${returnTo}`);
+    } else {
+      return NextResponse.redirect(`${requestUrl.origin}${returnTo}`);
     }
   }
 
-  // URL to redirect to after sign in process completes or fails
+  // No code provided - redirect to sign-in with error
   return NextResponse.redirect(`${requestUrl.origin}/sign-in?error=auth_callback_failed`);
 }

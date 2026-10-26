@@ -106,14 +106,27 @@ export default function AuthScreen({ mode: initialMode }: { mode: 'sign-in' | 's
 
     try {
       if (signingIn) {
-        const { error: signInError } = await supabase.auth.signInWithPassword({
+        console.log('Attempting sign in for:', cleanEmail);
+        const { data, error: signInError } = await supabase.auth.signInWithPassword({
           email: cleanEmail,
           password,
         });
-        if (signInError) throw signInError;
-        window.location.assign(returnTo || '/');
+        
+        if (signInError) {
+          console.error('Sign in error:', signInError);
+          throw signInError;
+        }
+        
+        console.log('Sign in successful, session:', data.session);
+        console.log('Redirecting to:', returnTo || '/');
+        
+        // Wait a bit for the session to be set in cookies
+        await new Promise(resolve => setTimeout(resolve, 500));
+        window.location.href = returnTo || '/';
       } else {
         const callbackUrl = `${window.location.origin}/auth/callback?return_to=${encodeURIComponent(returnTo || '/')}`;
+        console.log('Sign up callback URL:', callbackUrl);
+        
         const { data, error: signUpError } = await supabase.auth.signUp({
           email: cleanEmail,
           password,
@@ -125,14 +138,26 @@ export default function AuthScreen({ mode: initialMode }: { mode: 'sign-in' | 's
             },
           },
         });
-        if (signUpError) throw signUpError;
+        
+        if (signUpError) {
+          console.error('Sign up error:', signUpError);
+          throw signUpError;
+        }
+        
+        console.log('Sign up result:', data);
+        
         if (data.session) {
-          window.location.assign(returnTo || '/');
+          console.log('Session created immediately, redirecting');
+          await new Promise(resolve => setTimeout(resolve, 500));
+          window.location.href = returnTo || '/';
+        } else if (data.user && !data.user.confirmed_at) {
+          setSuccess('Account created! Please check your email (including Spam/Junk) to verify your account before signing in.');
         } else {
-          setSuccess('Account created! Please check your email (including Spam/Junk) to verify your account, or sign in.');
+          setSuccess('Account created! You can now sign in.');
         }
       }
     } catch (err) {
+      console.error('Auth error:', err);
       const message = err instanceof Error ? err.message : 'Authentication failed. Please try again.';
       setError(message);
     } finally {
@@ -148,14 +173,25 @@ export default function AuthScreen({ mode: initialMode }: { mode: 'sign-in' | 's
 
     try {
       const redirectTo = `${window.location.origin}/auth/callback?return_to=${encodeURIComponent(returnTo || '/')}`;
-      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      console.log('OAuth redirect URL:', redirectTo);
+      console.log('Initiating OAuth with provider:', provider);
+      
+      const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
           redirectTo,
         },
       });
-      if (oauthError) throw oauthError;
+      
+      if (oauthError) {
+        console.error('OAuth error:', oauthError);
+        throw oauthError;
+      }
+      
+      console.log('OAuth initiated successfully:', data);
+      // The browser will redirect automatically to Google
     } catch (err) {
+      console.error('OAuth exception:', err);
       const message = err instanceof Error ? err.message : `Failed to connect with ${provider}.`;
       setError(message);
       setBusy(false);
