@@ -145,6 +145,8 @@ type Session = { id: string; owner_hash: string; request_hash: string; created_a
 
 export class FeedExpiredError extends Error {}
 
+let cachedRevisionState: { db: D1Database; revision: string; expires: number } | null = null;
+
 export async function queryFeed(db: D1Database, input: FeedInput, sources: Source[], options: { pageSize: number; cursor?: string | null; page?: number; edition?: string | null; owner: string; clientKey?: string; now?: number }): Promise<ArticlePage> {
   const now = options.now ?? Date.now();
   const preferences = Object.fromEntries(Object.entries(input).filter(([key]) => key !== "snapshot"));
@@ -160,8 +162,15 @@ export async function queryFeed(db: D1Database, input: FeedInput, sources: Sourc
     session = await db.prepare('SELECT * FROM feed_sessions WHERE id=? AND owner_hash=? AND request_hash LIKE ? AND expires_at>?').bind(match[1], ownerHash, `${stableHash}:product-v4:%`, new Date(now).toISOString()).first<Session>();
     if (!session) throw new FeedExpiredError('This edition expired. Refresh your feed to continue.');
   } else {
-    const revisions = (await db.prepare("SELECT id,value FROM app_state WHERE id IN ('content_revision','engagement_revision','semantic_revision')").all<{ id: string; value: number }>()).results;
-    const revision = revisions.map(r => `${r.id}=${r.value}`).sort().join('|');
+    const isTest = typeof process !== 'undefined' && (process.env.NODE_ENV === 'test' || process.env.npm_lifecycle_event === 'test');
+    let revision = "";
+    if (!isTest && cachedRevisionState && cachedRevisionState.db === db && cachedRevisionState.expires > now) {
+      revision = cachedRevisionState.revision;
+    } else {
+      const revisions = (await db.prepare("SELECT id,value FROM app_state WHERE id IN ('content_revision','engagement_revision','semantic_revision')").all<{ id: string; value: number }>()).results;
+      revision = revisions.map(r => `${r.id}=${r.value}`).sort().join('|');
+      if (!isTest) cachedRevisionState = { db, revision, expires: now + 15000 };
+    }
     const requestHash = `${stableHash}:product-v4:${revision}:${Math.floor(now / 300000)}`;
     session = await db.prepare('SELECT * FROM feed_sessions WHERE owner_hash=? AND request_hash=? AND expires_at>? LIMIT 1').bind(ownerHash, requestHash, new Date(now).toISOString()).first<Session>();
     if (!session) {

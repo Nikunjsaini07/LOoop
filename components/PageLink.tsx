@@ -1,6 +1,9 @@
 import type { ComponentProps } from "react";
+import NextLink from "next/link";
 
-/** Native navigation avoids the Vinext production RSC prefetch/navigation failure. */
-export default function PageLink(props: ComponentProps<"a">) {
-  return <a {...props} />;
+export default function PageLink({ href, ...props }: ComponentProps<"a">) {
+  if (href && (href.startsWith("/") || href.startsWith("#"))) {
+    return <NextLink href={href} prefetch={false} {...props} />;
+  }
+  return <a href={href} {...props} />;
 }

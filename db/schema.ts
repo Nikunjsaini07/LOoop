@@ -11,7 +11,7 @@ export const articles = sqliteTable("articles", {
   publishedAt: text("published_at"),
   discoveredAt: text("discovered_at").notNull(),
   topics: text("topics").notNull(),
-}, (table) => [index("articles_company_idx").on(table.companyId)]);
+}, (table) => [index("articles_company_idx").on(table.companyId), index("articles_published_discovered_idx").on(table.publishedAt, table.discoveredAt)]);
 
 export const profiles = sqliteTable("profiles", {
   userId: text("user_id").primaryKey(),
@@ -45,7 +45,7 @@ export const userBookmarks = sqliteTable("user_bookmarks", { userId: text("user_
 export const userReadLogs = sqliteTable("user_read_logs", { userId: text("user_id").notNull().references(() => profiles.userId, { onDelete: "cascade" }), articleId: text("article_id").notNull().references(() => articles.id, { onDelete: "cascade" }), readAt: text("read_at").notNull() }, t => [primaryKey({ columns: [t.userId, t.articleId] })]);
 export const engagements = sqliteTable("engagements", { readerId: text("reader_id").notNull(), articleId: text("article_id").notNull().references(() => articles.id, { onDelete: "cascade" }), kind: text("kind").notNull(), active: integer("active").notNull(), occurredAt: text("occurred_at").notNull() }, t => [primaryKey({ columns: [t.readerId, t.articleId, t.kind] }), index("engagements_recent_idx").on(t.active, t.occurredAt, t.articleId), index("engagements_article_active_idx").on(t.articleId, t.active, t.kind)]);
 export const appState = sqliteTable("app_state", { id: text("id").primaryKey(), value: integer("value").notNull() });
-export const feedSessions = sqliteTable("feed_sessions", { id: text("id").primaryKey(), ownerHash: text("owner_hash").notNull(), requestHash: text("request_hash").notNull(), createdAt: text("created_at").notNull(), expiresAt: text("expires_at").notNull(), total: integer("total").notNull().default(0), basis: text("basis").notNull() });
+export const feedSessions = sqliteTable("feed_sessions", { id: text("id").primaryKey(), ownerHash: text("owner_hash").notNull(), requestHash: text("request_hash").notNull(), createdAt: text("created_at").notNull(), expiresAt: text("expires_at").notNull(), total: integer("total").notNull().default(0), basis: text("basis").notNull() }, t => [index("feed_sessions_owner_request_idx").on(t.ownerHash, t.requestHash, t.expiresAt)]);
 export const feedChunks = sqliteTable("feed_chunks", { sessionId: text("session_id").notNull().references(() => feedSessions.id, { onDelete: "cascade" }), chunkIndex: integer("chunk_index").notNull(), ids: text("ids").notNull(), basis: text("basis").notNull(), details: text("details").notNull().default('{}') }, t => [primaryKey({ columns: [t.sessionId, t.chunkIndex] })]);
 export const semanticDocuments = sqliteTable("semantic_documents", { articleId: text("article_id").primaryKey().references(() => articles.id, {onDelete:'cascade'}), content: text("content").notNull(), model: text("model").notNull(), updatedAt: text("updated_at").notNull() });
 export const semanticTopics = sqliteTable("semantic_topics", {articleId:text("article_id").notNull().references(()=>semanticDocuments.articleId,{onDelete:'cascade'}),topicId:text("topic_id").notNull().references(()=>topics.id),similarity:real("similarity").notNull(),generation:text("generation").notNull().default('')},t=>[primaryKey({columns:[t.articleId,t.topicId]}),index('semantic_topics_topic_idx').on(t.topicId,t.articleId)]);

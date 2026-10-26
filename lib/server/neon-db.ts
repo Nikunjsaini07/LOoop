@@ -137,6 +137,25 @@ export function createNeonDatabase(connectionString: string): NeonD1Database {
     },
 
     async batch(statements: D1PreparedStatement[]): Promise<{ results: unknown[]; success: boolean; meta: Record<string, unknown> }[]> {
+      if (!statements.length) return [];
+      try {
+        if (typeof client.transaction === 'function') {
+          const queryResults = await client.transaction(txn =>
+            statements.map(stmt => {
+              const ps = stmt as PreparedStatement;
+              return txn.query(ps.getSql(), (ps.getParams() ?? []) as unknown[]);
+            })
+          );
+          return (queryResults ?? []).map(rows => ({
+            results: (rows ?? []) as unknown[],
+            success: true,
+            meta: { changes: 0, served_by: 'neon-postgresql-transaction' },
+          }));
+        }
+      } catch {
+        // Fall back to sequential execution if transaction mode encounters an incompatibility
+      }
+
       const results: { results: unknown[]; success: boolean; meta: Record<string, unknown> }[] = [];
       for (const stmt of statements) {
         const ps = stmt as PreparedStatement;

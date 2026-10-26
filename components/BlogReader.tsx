@@ -24,6 +24,7 @@ type View = "home" | "trending" | "profile";
 type FeedSort = "default" | "newest" | "oldest" | "title" | "company" | "popular";
 const articleLabel = (article: Article) => `${article.published_at ? "" : "Collected "}${new Date(article.published_at || article.discovered_at).toLocaleDateString("en-GB", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}`;
 const mergeArticles = (first: Article[], next: Article[]) => [...new Map([...first, ...next].map((article) => [article.id, article])).values()];
+const clientFeedCache = new Map<string, { data: ArticlePage; timestamp: number }>();
 
 
 const domain = (url: string) => { try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return "Original publisher"; } };
@@ -218,8 +219,16 @@ export default function BlogReader({ initial, initialView = "home", initialLocat
         }
       } catch { /* A missing device snapshot starts a fresh edition explicitly. */ }
     }
-    // Pending state reflects a newly subscribed external feed while previous results stay visible.
-    setLoading(true);
+    const cacheKey = `${baseKey}:${pageNumber}:${profileOwner || 'guest'}`;
+    const cached = reload === 0 ? clientFeedCache.get(cacheKey) : null;
+    if (cached && Date.now() - cached.timestamp < 120000) {
+      setPage(cached.data);
+      setOrdered(cached.data.articles);
+      setKnown((previous) => mergeArticles(previous, cached.data.articles));
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
     setError("");
     const params = new URLSearchParams(paramsString);
     params.set("page",String(pageNumber));
@@ -237,6 +246,7 @@ export default function BlogReader({ initial, initialView = "home", initialLocat
       return await response.json() as ArticlePage;
     }).then((result) => {
       if (current !== generation.current) return;
+      clientFeedCache.set(cacheKey, { data: result, timestamp: Date.now() });
       setPage(result);
       setOrdered(result.articles);
       setKnown((previous) => mergeArticles(previous, result.articles));
