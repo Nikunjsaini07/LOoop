@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import "./library.css";
 import "./article.css";
@@ -30,6 +32,8 @@ export default function RootLayout({
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img className="site-sky" src="/reference/sky.jpg" alt="" aria-hidden="true" width={1920} height={1280} fetchPriority="high" decoding="async" />
         <ThemeProvider><AuthProvider>{children}</AuthProvider></ThemeProvider>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

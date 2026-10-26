@@ -9,6 +9,7 @@
 .sync-needs-attention { border-left: 3px solid var(--accent); }
 
 .feed-context-note { padding: 14px 18px; border: 1px solid var(--line); border-radius: 10px; margin: 0 0 22px; font-size: 13px; line-height: 1.6; color: var(--muted); }
+.feed-status-top { justify-content: flex-start; padding: 8px 0 14px; }
 .missing-excerpt { font-style: italic; }
 .article-topic { font-size: 11px; min-height: 28px; display: inline-flex; align-items: center; padding: 4px 9px; }
 .article-topics { gap: 8px; }
